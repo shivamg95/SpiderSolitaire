@@ -11,6 +11,9 @@ export default function StockPile({ stockCount, canDeal, onDeal, cardWidth }: St
   const remainingDeals = Math.floor(stockCount / 10)
   const isEmpty = stockCount === 0
 
+  const iconSize = Math.max(14, Math.min(36, Math.round(cardWidth * 0.31)))
+  const labelSize = Math.max(10, Math.min(22, Math.round(cardWidth * 0.17)))
+
   return (
     <div className="flex flex-col items-center gap-2">
       <button
@@ -46,13 +49,13 @@ export default function StockPile({ stockCount, canDeal, onDeal, cardWidth }: St
               className="absolute inset-0 rounded-md flex items-center justify-center
                          bg-gradient-to-br from-indigo-950 to-blue-950 border border-indigo-700/50"
             >
-              <ChevronsDown className="w-5 h-5 text-[#00f0ff]/70" />
+              <ChevronsDown style={{ width: iconSize, height: iconSize }} className="text-[#00f0ff]/70" />
             </div>
           </>
         )}
       </button>
 
-      <span className="text-[11px] text-indigo-400/70 font-medium">
+      <span className="text-indigo-400/70 font-medium" style={{ fontSize: labelSize }}>
         {isEmpty ? 'Empty' : `${stockCount} cards (${remainingDeals} deals)`}
       </span>
     </div>

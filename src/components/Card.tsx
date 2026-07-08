@@ -9,6 +9,7 @@ interface CardProps {
   onClick?: () => void
   onPointerDown?: (e: React.PointerEvent) => void
   isSelected?: boolean
+  isBlocked?: boolean
   zIndex?: number
   offset?: number
 }
@@ -17,14 +18,32 @@ function fontSize(base: number, width: number, min: number, max: number): number
   return Math.round(Math.max(min, Math.min(max, width * base)))
 }
 
-export default function Card({ card, cardWidth, onClick, onPointerDown, isSelected, zIndex = 0, offset = 0 }: CardProps) {
+export default function Card({ card, cardWidth, onClick, onPointerDown, isSelected, isBlocked, zIndex = 0, offset = 0 }: CardProps) {
   const isBlack = card.suit === 'spades' || card.suit === 'clubs'
   const suitColor = isBlack ? 'text-gray-900' : 'text-red-500'
   const [justFlipped, setJustFlipped] = useState(false)
 
-  const cornerSize = fontSize(0.15, cardWidth, 8, 16)
-  const centerSize = fontSize(0.28, cardWidth, 16, 36)
-  const hoverLift = Math.round(cardWidth * 0.03)
+  const w = cardWidth
+
+  const cornerSize = fontSize(0.15, w, 9, 24)
+  const centerSize = fontSize(0.28, w, 16, 45)
+  const hoverLift = Math.round(w * 0.03)
+
+  const cornerTop = Math.round(w * 0.031)
+  const cornerSide = Math.round(w * 0.062)
+  const borderRadius = Math.round(w * 0.094)
+
+  const shadowY = Math.round(w * 0.031)
+  const shadowBlur = Math.round(w * 0.125)
+  const shadowBlurLg = Math.round(w * 0.31)
+  const shadowOffsetLg = Math.round(w * 0.125)
+  const shadowSpreadLg = Math.round(w * 0.375)
+  const tapBlur = Math.round(w * 0.25)
+
+  const hatchInset = Math.round(w * 0.047)
+  const hatchHalf = Math.round(w * 0.031)
+  const hatchCycle = Math.round(w * 0.062)
+  const innerInset = Math.round(w * 0.062)
 
   useEffect(() => {
     if (card.faceUp) {
@@ -34,18 +53,20 @@ export default function Card({ card, cardWidth, onClick, onPointerDown, isSelect
     }
   }, [card.faceUp])
 
+  const unselShadow = `0 ${shadowY}px ${shadowBlur}px rgba(0,0,0,0.35)`
+  const selShadow = `0 0 0 ${shadowY}px #00f0ff, 0 0 ${shadowBlurLg}px rgba(0,240,255,0.6), 0 ${shadowOffsetLg}px ${shadowSpreadLg}px rgba(0,0,0,0.5)`
+  const tapShadow = `0 0 ${tapBlur}px rgba(0,240,255,0.5)`
+
   return (
     <motion.div
       layout
       layoutId={card.id}
       initial={card.faceUp ? { opacity: 0, scale: 0.9 } : undefined}
       animate={{
-        opacity: 1,
+        opacity: isBlocked ? 0.5 : 1,
         scale: isSelected ? 1.05 : 1,
-        boxShadow: card.faceUp
-          ? (isSelected
-              ? '0 0 20px rgba(0,240,255,0.6), 0 8px 24px rgba(0,0,0,0.5)'
-              : '0 2px 8px rgba(0,0,0,0.35)')
+        boxShadow: card.faceUp && !isBlocked
+          ? (isSelected ? selShadow : unselShadow)
           : 'none',
       }}
       exit={{ opacity: 0, scale: 0.85, transition: { duration: 0.12 } }}
@@ -53,49 +74,47 @@ export default function Card({ card, cardWidth, onClick, onPointerDown, isSelect
         layout: { type: 'spring', stiffness: 500, damping: 35, mass: 0.8 },
         default: { duration: 0.2 },
       }}
-      className={`
-        absolute rounded-md select-none overflow-hidden
-        ${card.faceUp ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}
-        ${isSelected
-          ? 'ring-2 ring-[#00f0ff]'
-          : ''
-        }
-      `}
+      className="absolute select-none overflow-hidden"
       style={{
-        width: cardWidth,
+        width: w,
         left: '50%',
         x: '-50%',
         top: 0,
         y: offset,
         zIndex: isSelected ? zIndex + 100 : zIndex,
         aspectRatio: '5 / 7',
+        borderRadius,
         touchAction: 'none',
+        cursor: card.faceUp && !isBlocked ? 'grab' : 'not-allowed',
       }}
       onClick={(e) => {
         e.stopPropagation()
-        onClick?.()
+        if (!isBlocked) onClick?.()
       }}
       onPointerDown={(e) => {
         e.stopPropagation()
-        if (card.faceUp) onPointerDown?.(e)
+        if (card.faceUp && !isBlocked) onPointerDown?.(e)
       }}
-      whileHover={card.faceUp ? { scale: 1.03, y: offset - hoverLift } : undefined}
-      whileTap={card.faceUp ? { scale: 0.95, boxShadow: '0 0 16px rgba(0,240,255,0.5)' } : undefined}
+      whileHover={card.faceUp && !isBlocked ? { scale: 1.03, y: offset - hoverLift } : undefined}
+      whileTap={card.faceUp && !isBlocked ? { scale: 0.95, boxShadow: tapShadow } : undefined}
     >
       {!card.faceUp ? (
         <>
           <div
-            className="absolute inset-0 rounded-md border border-indigo-800/50"
+            className="absolute inset-0 border border-indigo-800/50"
             style={{
+              borderRadius,
               background: 'linear-gradient(135deg, #1a1050 0%, #1e1660 30%, #162040 60%, #1a1050 100%)',
             }}
           />
           <div
-            className="absolute inset-[3px] rounded-sm opacity-50"
+            className="absolute opacity-50"
             style={{
+              inset: hatchInset,
+              borderRadius: Math.round(w * 0.062),
               background: `
-                repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,240,255,0.08) 2px, rgba(0,240,255,0.08) 4px),
-                repeating-linear-gradient(-45deg, transparent, transparent 2px, rgba(180,77,255,0.06) 2px, rgba(180,77,255,0.06) 4px)
+                repeating-linear-gradient(45deg, transparent, transparent ${hatchHalf}px, rgba(0,240,255,0.08) ${hatchHalf}px, rgba(0,240,255,0.08) ${hatchCycle}px),
+                repeating-linear-gradient(-45deg, transparent, transparent ${hatchHalf}px, rgba(180,77,255,0.06) ${hatchHalf}px, rgba(180,77,255,0.06) ${hatchCycle}px)
               `,
             }}
           />
@@ -106,8 +125,10 @@ export default function Card({ card, cardWidth, onClick, onPointerDown, isSelect
             />
           </div>
           <div
-            className="absolute inset-[4px] rounded-sm border border-indigo-600/30"
+            className="absolute border border-indigo-600/30"
             style={{
+              inset: innerInset,
+              borderRadius: Math.round(w * 0.062),
               background: 'linear-gradient(135deg, rgba(180,77,255,0.15) 0%, rgba(0,240,255,0.08) 50%, rgba(180,77,255,0.15) 100%)',
             }}
           />
@@ -116,22 +137,24 @@ export default function Card({ card, cardWidth, onClick, onPointerDown, isSelect
         <>
           {justFlipped && (
             <motion.div
-              className="absolute inset-0 rounded-md pointer-events-none z-10"
+              className="absolute inset-0 pointer-events-none z-10"
               initial={{ opacity: 0.6 }}
               animate={{ opacity: 0 }}
               transition={{ duration: 0.5, ease: 'easeOut' }}
-              style={{
-                background: 'radial-gradient(ellipse at center, rgba(0,240,255,0.4) 0%, transparent 70%)',
-              }}
+              style={{ background: 'radial-gradient(ellipse at center, rgba(0,240,255,0.4) 0%, transparent 70%)', borderRadius }}
             />
           )}
           <div
-            className="absolute inset-0 rounded-md"
+            className="absolute inset-0"
             style={{
+              borderRadius,
               background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
             }}
           />
-          <div className="absolute top-0.5 left-1 flex flex-col items-center leading-none pointer-events-none">
+          <div
+            className="absolute flex flex-col items-center leading-none pointer-events-none"
+            style={{ top: cornerTop, left: cornerSide }}
+          >
             <span className={`font-bold ${suitColor}`} style={{ fontSize: cornerSize }}>
               {getRankName(card.rank)}
             </span>
@@ -144,7 +167,10 @@ export default function Card({ card, cardWidth, onClick, onPointerDown, isSelect
               {SUIT_SYMBOLS[card.suit]}
             </span>
           </div>
-          <div className="absolute bottom-0.5 right-1 flex flex-col items-center leading-none pointer-events-none [transform:rotate(180deg)]">
+          <div
+            className="absolute flex flex-col items-center leading-none pointer-events-none"
+            style={{ bottom: cornerTop, right: cornerSide, transform: 'rotate(180deg)' }}
+          >
             <span className={`font-bold ${suitColor}`} style={{ fontSize: cornerSize }}>
               {getRankName(card.rank)}
             </span>

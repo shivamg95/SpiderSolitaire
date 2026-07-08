@@ -100,6 +100,7 @@ export default function Column({
                 selectedCardIndex != null &&
                 index >= selectedCardIndex &&
                 index < selectedCardIndex + runSize
+              const isBlocked = card.faceUp && getValidRunFrom(cards, index) < (cards.length - index)
 
               return (
                 <Card
@@ -109,6 +110,7 @@ export default function Column({
                   offset={offset}
                   zIndex={index}
                   isSelected={isCardSelected}
+                  isBlocked={isBlocked}
                   onPointerDown={(e) => onCardPointerDown?.(index, e)}
                 />
               )

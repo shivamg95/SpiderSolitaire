@@ -347,6 +347,8 @@ export default function Board() {
       const runSize = getValidRunFrom(srcCol, cardIndex)
       if (runSize === 0) return
 
+      if (runSize !== srcCol.length - cardIndex) return
+
       setHintMoves([])
       setHintIndex(0)
 
@@ -522,7 +524,7 @@ export default function Board() {
             </div>
           ) : (
             <LayoutGroup>
-              <div className="flex-1 flex min-h-0 overflow-x-auto" style={{ touchAction: 'pan-y' }}>
+              <div className="flex-1 flex min-h-0 overflow-auto" style={{ touchAction: 'pan-y' }}>
                 <div
                   className="flex gap-1.5 px-1"
                   style={{ minWidth: Math.max(window.innerWidth, TABLEAU_COLUMNS * dims.cardWidth + (TABLEAU_COLUMNS - 1) * COLUMN_GAP + CONTAINER_PADDING_X) }}
@@ -573,37 +575,55 @@ export default function Board() {
 
         {/* Drag ghost card */}
         <AnimatePresence>
-          {drag && (
+          {drag && (() => {
+            const gw = dims.cardWidth
+            const gCornerSize = Math.max(9, Math.min(24, Math.round(gw * 0.15)))
+            const gCenterSize = Math.max(16, Math.min(45, Math.round(gw * 0.28)))
+            const gCornerTop = Math.round(gw * 0.031)
+            const gCornerSide = Math.round(gw * 0.062)
+            const gRadius = Math.round(gw * 0.094)
+            const gShadowY = Math.round(gw * 0.125)
+            const gShadowBlur = Math.round(gw * 0.5)
+            const gGlowBlur = Math.round(gw * 0.31)
+            const isRed = drag.card.suit === 'hearts' || drag.card.suit === 'diamonds'
+            const gSuitColor = isRed ? 'text-red-500' : 'text-gray-900'
+
+            return (
             <motion.div
-              className="fixed pointer-events-none z-50 rounded-md overflow-hidden"
+              className="fixed pointer-events-none z-50 overflow-hidden"
               style={{
-                width: dims.cardWidth,
+                width: gw,
                 aspectRatio: '5 / 7',
                 left: drag.currentX - dims.halfWidth,
                 top: drag.currentY - dims.halfHeight,
+                borderRadius: gRadius,
                 background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
-                boxShadow: '0 8px 32px rgba(0,240,255,0.4), 0 0 20px rgba(180,77,255,0.3)',
+                boxShadow: `0 ${gShadowY}px ${gShadowBlur}px rgba(0,240,255,0.4), 0 0 ${gGlowBlur}px rgba(180,77,255,0.3)`,
               }}
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 0.95, scale: 1.03 }}
               exit={{ opacity: 0, scale: 0.5 }}
               transition={{ type: 'spring', stiffness: 600, damping: 25 }}
             >
-              <div className="absolute top-0.5 left-1 flex flex-col items-center leading-none">
-                <span className={`text-[10px] font-bold ${drag.card.suit === 'hearts' || drag.card.suit === 'diamonds' ? 'text-red-500' : 'text-gray-900'}`}>
+              <div
+                className="absolute flex flex-col items-center leading-none"
+                style={{ top: gCornerTop, left: gCornerSide }}
+              >
+                <span className={`font-bold ${gSuitColor}`} style={{ fontSize: gCornerSize }}>
                   {getRankName(drag.card.rank)}
                 </span>
-                <span className={`text-[10px] ${drag.card.suit === 'hearts' || drag.card.suit === 'diamonds' ? 'text-red-500' : 'text-gray-900'}`}>
+                <span className={gSuitColor} style={{ fontSize: gCornerSize }}>
                   {SUIT_SYMBOLS[drag.card.suit]}
                 </span>
               </div>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className={`text-xl ${drag.card.suit === 'hearts' || drag.card.suit === 'diamonds' ? 'text-red-500' : 'text-gray-900'}`}>
+                <span className={gSuitColor} style={{ fontSize: gCenterSize }}>
                   {SUIT_SYMBOLS[drag.card.suit]}
                 </span>
               </div>
             </motion.div>
-          )}
+            )
+          })()}
         </AnimatePresence>
 
         {/* Selection indicator */}
