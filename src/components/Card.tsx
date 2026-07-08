@@ -25,7 +25,7 @@ export default function Card({ card, cardWidth, onClick, onPointerDown, isBlocke
 
   const w = cardWidth
 
-  const cornerSize = fontSize(0.15, w, 9, 24)
+  const cornerSize = fontSize(0.20, w, 11, 32)
   const hoverLift = Math.round(w * 0.06)
 
   const cornerTop = Math.round(w * 0.031)
@@ -55,35 +55,17 @@ export default function Card({ card, cardWidth, onClick, onPointerDown, isBlocke
   const tapShadow = `0 0 ${tapBlur}px rgba(0,240,255,0.5)`
 
   return (
-    <motion.div
-      layout="position"
-      layoutId={card.id}
-      initial={false}
-      animate={{
-        opacity: isBlocked ? 0.5 : 1,
-        scale: 1,
-        scaleX: justFlipped ? [0.3, 1] : 1,
-        boxShadow: card.faceUp && !isBlocked ? unselShadow : 'none',
-      }}
-      exit={{ opacity: 0, scale: 0.85, transition: { duration: 0.12 } }}
-      transition={{
-        layout: { type: 'spring', stiffness: 300, damping: 25, mass: 1 },
-        scaleX: { duration: 0.3, ease: 'easeOut' },
-        default: { duration: 0.15 },
-      }}
-      className="absolute select-none overflow-hidden"
+    <div
       style={{
-        width: w,
+        position: 'absolute',
         left: '50%',
-        x: '-50%',
-        top: 0,
-        y: offset,
+        top: offset,
+        width: w,
         zIndex,
         aspectRatio: '5 / 7',
-        borderRadius,
+        transform: 'translateX(-50%)',
         touchAction: 'none',
         cursor: card.faceUp && !isBlocked ? 'grab' : 'not-allowed',
-        willChange: 'transform',
       }}
       onClick={(e) => {
         e.stopPropagation()
@@ -93,78 +75,104 @@ export default function Card({ card, cardWidth, onClick, onPointerDown, isBlocke
         e.stopPropagation()
         if (card.faceUp && !isBlocked) onPointerDown?.(e)
       }}
-      whileHover={card.faceUp && !isBlocked ? { scale: 1.04, y: offset - hoverLift, boxShadow: hoverShadow } : undefined}
-      whileTap={card.faceUp && !isBlocked ? { scale: 0.92, boxShadow: tapShadow } : undefined}
     >
-      {!card.faceUp ? (
-        <>
-          <div
-            className="absolute inset-0 border border-indigo-800/50"
-            style={{
-              borderRadius,
-              background: 'linear-gradient(135deg, #1a1050 0%, #1e1660 30%, #162040 60%, #1a1050 100%)',
-            }}
-          />
-          <div
-            className="absolute opacity-50"
-            style={{
-              inset: hatchInset,
-              borderRadius: Math.round(w * 0.062),
-              background: `
-                repeating-linear-gradient(45deg, transparent, transparent ${hatchHalf}px, rgba(0,240,255,0.08) ${hatchHalf}px, rgba(0,240,255,0.08) ${hatchCycle}px),
-                repeating-linear-gradient(-45deg, transparent, transparent ${hatchHalf}px, rgba(180,77,255,0.06) ${hatchHalf}px, rgba(180,77,255,0.06) ${hatchCycle}px)
-              `,
-            }}
-          />
-          <div className="absolute inset-0 flex items-center justify-center">
+      <motion.div
+        layout="position"
+        layoutId={card.id}
+        initial={false}
+        animate={{
+          opacity: isBlocked ? 0.5 : 1,
+          scale: 1,
+          scaleX: justFlipped ? [0.3, 1] : 1,
+          boxShadow: card.faceUp && !isBlocked ? unselShadow : 'none',
+        }}
+        exit={{ opacity: 0, scale: 0.85, transition: { duration: 0.12 } }}
+        transition={{
+          layout: { type: 'spring', stiffness: 300, damping: 25, mass: 1 },
+          scaleX: { duration: 0.3, ease: 'easeOut' },
+          default: { duration: 0.15 },
+        }}
+        className="relative select-none overflow-hidden"
+        style={{
+          width: '100%',
+          height: '100%',
+          borderRadius,
+          willChange: 'transform',
+          position: 'relative',
+        }}
+        whileHover={card.faceUp && !isBlocked ? { scale: 1.04, y: -hoverLift, boxShadow: hoverShadow } : undefined}
+        whileTap={card.faceUp && !isBlocked ? { scale: 0.92, boxShadow: tapShadow } : undefined}
+      >
+        {!card.faceUp ? (
+          <>
             <div
-              className="w-2/3 h-2/3 rounded-full opacity-20"
-              style={{ background: 'radial-gradient(circle, rgba(0,240,255,0.4) 0%, transparent 70%)' }}
+              className="absolute inset-0 border border-indigo-800/50"
+              style={{
+                borderRadius,
+                background: 'linear-gradient(135deg, #1a1050 0%, #1e1660 30%, #162040 60%, #1a1050 100%)',
+              }}
             />
-          </div>
-          <div
-            className="absolute border border-indigo-600/30"
-            style={{
-              inset: innerInset,
-              borderRadius: Math.round(w * 0.062),
-              background: 'linear-gradient(135deg, rgba(180,77,255,0.15) 0%, rgba(0,240,255,0.08) 50%, rgba(180,77,255,0.15) 100%)',
-            }}
-          />
-        </>
-      ) : (
-        <>
-          <div
-            className="absolute inset-0"
-            style={{
-              borderRadius,
-              background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
-            }}
-          />
-          <div
-            className="absolute flex flex-col items-center leading-none pointer-events-none z-10"
-            style={{ top: cornerTop, left: cornerSide }}
-          >
-            <span className={`font-bold ${suitColor}`} style={{ fontSize: cornerSize }}>
-              {getRankName(card.rank)}
-            </span>
-            <span className={suitColor} style={{ fontSize: cornerSize }}>
-              {SUIT_SYMBOLS[card.suit]}
-            </span>
-          </div>
-          <PipLayout rank={card.rank} suit={card.suit} cardWidth={w} isRed={!isBlack} />
-          <div
-            className="absolute flex flex-col items-center leading-none pointer-events-none z-10"
-            style={{ bottom: cornerTop, right: cornerSide, transform: 'rotate(180deg)' }}
-          >
-            <span className={`font-bold ${suitColor}`} style={{ fontSize: cornerSize }}>
-              {getRankName(card.rank)}
-            </span>
-            <span className={suitColor} style={{ fontSize: cornerSize }}>
-              {SUIT_SYMBOLS[card.suit]}
-            </span>
-          </div>
-        </>
-      )}
-    </motion.div>
+            <div
+              className="absolute opacity-50"
+              style={{
+                inset: hatchInset,
+                borderRadius: Math.round(w * 0.062),
+                background: `
+                  repeating-linear-gradient(45deg, transparent, transparent ${hatchHalf}px, rgba(0,240,255,0.08) ${hatchHalf}px, rgba(0,240,255,0.08) ${hatchCycle}px),
+                  repeating-linear-gradient(-45deg, transparent, transparent ${hatchHalf}px, rgba(180,77,255,0.06) ${hatchHalf}px, rgba(180,77,255,0.06) ${hatchCycle}px)
+                `,
+              }}
+            />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div
+                className="w-2/3 h-2/3 rounded-full opacity-20"
+                style={{ background: 'radial-gradient(circle, rgba(0,240,255,0.4) 0%, transparent 70%)' }}
+              />
+            </div>
+            <div
+              className="absolute border border-indigo-600/30"
+              style={{
+                inset: innerInset,
+                borderRadius: Math.round(w * 0.062),
+                background: 'linear-gradient(135deg, rgba(180,77,255,0.15) 0%, rgba(0,240,255,0.08) 50%, rgba(180,77,255,0.15) 100%)',
+              }}
+            />
+          </>
+        ) : (
+          <>
+            <div
+              className="absolute inset-0"
+              style={{
+                borderRadius,
+                background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+              }}
+            />
+            <div
+              className="absolute flex flex-col items-center leading-none pointer-events-none z-10"
+              style={{ top: cornerTop, left: cornerSide }}
+            >
+              <span className={`font-bold ${suitColor}`} style={{ fontSize: cornerSize }}>
+                {getRankName(card.rank)}
+              </span>
+              <span className={suitColor} style={{ fontSize: cornerSize }}>
+                {SUIT_SYMBOLS[card.suit]}
+              </span>
+            </div>
+            <PipLayout rank={card.rank} suit={card.suit} cardWidth={w} isRed={!isBlack} />
+            <div
+              className="absolute flex flex-col items-center leading-none pointer-events-none z-10"
+              style={{ bottom: cornerTop, right: cornerSide, transform: 'rotate(180deg)' }}
+            >
+              <span className={`font-bold ${suitColor}`} style={{ fontSize: cornerSize }}>
+                {getRankName(card.rank)}
+              </span>
+              <span className={suitColor} style={{ fontSize: cornerSize }}>
+                {SUIT_SYMBOLS[card.suit]}
+              </span>
+            </div>
+          </>
+        )}
+      </motion.div>
+    </div>
   )
 }
