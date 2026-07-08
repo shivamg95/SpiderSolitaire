@@ -131,6 +131,8 @@ export function findAllValidMoves(columns: Card[][]): Move[] {
 
     for (const startIdx of startingPoints) {
       const runSize = getValidRunFrom(sourceCol, startIdx)
+      const cardCount = sourceCol.length - startIdx
+      if (runSize !== cardCount) continue
       const movingCard = sourceCol[startIdx]
 
       for (let to = 0; to < TABLEAU_COLUMNS; to++) {
@@ -138,11 +140,11 @@ export function findAllValidMoves(columns: Card[][]): Move[] {
         const targetCol = columns[to]
 
         if (targetCol.length === 0) {
-          moves.push({ fromColumn: from, toColumn: to, cardCount: runSize })
+          moves.push({ fromColumn: from, toColumn: to, cardCount })
         } else {
           const targetCard = targetCol[targetCol.length - 1]
           if (isValidDrop(movingCard, targetCard)) {
-            moves.push({ fromColumn: from, toColumn: to, cardCount: runSize })
+            moves.push({ fromColumn: from, toColumn: to, cardCount })
           }
         }
       }

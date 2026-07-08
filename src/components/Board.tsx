@@ -1,14 +1,17 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion'
 import { useGameStore } from '../store/gameStore'
+import { useStatsStore } from '../store/statsStore'
 import Starfield from './Starfield'
 import Column, { getPointerColumnIndex } from './Column'
 import StockPile from './StockPile'
 import Foundation from './Foundation'
 import Controls from './Controls'
-import { getValidRunFrom } from '../engine/rules'
+import WinScreen from './WinScreen'
+import StatsDashboard from './StatsDashboard'
+import { getValidRunFrom, findAllValidMoves, canAutoComplete } from '../engine/rules'
 import { getRankName, SUIT_SYMBOLS } from '../types'
-import type { GameMode, Card as CardType } from '../types'
+import type { GameMode, Card as CardType, Move } from '../types'
 
 interface DragState {
   column: number
@@ -29,23 +32,33 @@ export default function Board() {
     moves,
     gameMode,
     gameStatus,
+    startTime,
     moveCard,
     dealStock,
     undo,
     redo,
-    hint,
     hasUndo,
     hasRedo,
     newGame,
+    resign,
+    autoComplete,
   } = useGameStore()
+
+  const recordGame = useStatsStore(s => s.recordGame)
 
   const [selectedColumn, setSelectedColumn] = useState<number | null>(null)
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null)
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(gameMode || 'easy')
   const [drag, setDrag] = useState<DragState | null>(null)
   const [dragTargetColumn, setDragTargetColumn] = useState<number | null>(null)
+  const [showWinScreen, setShowWinScreen] = useState(false)
+  const [showStats, setShowStats] = useState(false)
+  const [hintIndex, setHintIndex] = useState(0)
+  const [hintMoves, setHintMoves] = useState<Move[]>([])
+  const [hasRecorded, setHasRecorded] = useState(false)
 
   const prevFoundations = useRef(foundations)
+  const prevGameStatus = useRef(gameStatus)
   const [clearParticles, setClearParticles] = useState<{ id: number; x: number; y: number }[]>([])
 
   useEffect(() => {
@@ -55,6 +68,8 @@ export default function Board() {
   useEffect(() => {
     setSelectedColumn(null)
     setSelectedCardIndex(null)
+    setHintMoves([])
+    setHintIndex(0)
   }, [columns, stock])
 
   useEffect(() => {
@@ -72,6 +87,31 @@ export default function Board() {
     }
     prevFoundations.current = foundations
   }, [foundations])
+
+  useEffect(() => {
+    if (prevGameStatus.current === 'playing' && gameStatus === 'won' && !hasRecorded) {
+      const elapsed = startTime ? Date.now() - startTime : 0
+      recordGame(gameMode, true, moves, elapsed)
+      setHasRecorded(true)
+      setTimeout(() => setShowWinScreen(true), 600)
+    }
+    prevGameStatus.current = gameStatus
+  }, [gameStatus, gameMode, moves, startTime, recordGame, hasRecorded])
+
+  const handleResign = useCallback(() => {
+    const elapsed = startTime ? Date.now() - startTime : 0
+    recordGame(gameMode, false, moves, elapsed)
+    resign()
+  }, [resign, recordGame, gameMode, moves, startTime])
+
+  const handleNewGame = useCallback((mode: GameMode) => {
+    setShowWinScreen(false)
+    setShowStats(false)
+    setHasRecorded(false)
+    setHintMoves([])
+    setHintIndex(0)
+    newGame(mode)
+  }, [newGame])
 
   const handlePointerMove = useCallback((e: PointerEvent) => {
     if (!drag) return
@@ -147,6 +187,9 @@ export default function Board() {
       const runSize = getValidRunFrom(srcCol, cardIndex)
       if (runSize === 0) return
 
+      setHintMoves([])
+      setHintIndex(0)
+
       setDrag({
         column: colIndex,
         cardIndex,
@@ -178,16 +221,40 @@ export default function Board() {
   const handleDeal = useCallback(() => {
     setSelectedColumn(null)
     setSelectedCardIndex(null)
+    setHintMoves([])
+    setHintIndex(0)
     dealStock()
   }, [dealStock])
 
   const handleHint = useCallback(() => {
-    const move = hint()
-    if (move && move.fromColumn !== 'stock') {
-      setSelectedColumn(null)
-      setSelectedCardIndex(null)
+    if (gameStatus !== 'playing') return
+
+    const allMoves = findAllValidMoves(columns)
+    if (allMoves.length === 0) return
+
+    if (hintMoves.length === 0 || hintIndex >= allMoves.length) {
+      setHintMoves(allMoves)
+      setHintIndex(0)
+    } else {
+      setHintIndex(prev => (prev + 1) % allMoves.length)
     }
-  }, [hint])
+
+    setSelectedColumn(null)
+    setSelectedCardIndex(null)
+  }, [columns, gameStatus, hintMoves.length, hintIndex])
+
+  const currentHint = hintMoves.length > 0 && hintIndex < hintMoves.length
+    ? hintMoves[hintIndex]
+    : null
+
+  const handleAutoComplete = useCallback(() => {
+    if (gameStatus !== 'playing') return
+    autoComplete()
+  }, [autoComplete, gameStatus])
+
+  const isAutoCompletable = gameStatus === 'playing' && canAutoComplete(columns, stock)
+  const showBoard = gameStatus !== 'idle'
+  const elapsedMs = startTime ? Date.now() - startTime : 0
 
   return (
     <div className="fixed inset-0 flex flex-col bg-transparent text-white">
@@ -201,7 +268,7 @@ export default function Board() {
               canDeal={stock.length >= 10 && gameStatus === 'playing'}
               onDeal={handleDeal}
             />
-            {gameStatus !== 'idle' && (
+            {showBoard && (
               <Foundation completed={foundations} />
             )}
           </div>
@@ -210,10 +277,14 @@ export default function Board() {
             moves={moves}
             hasUndo={hasUndo()}
             hasRedo={hasRedo()}
+            canAutoComplete={isAutoCompletable}
+            gameInProgress={gameStatus === 'playing'}
             onUndo={undo}
             onRedo={redo}
             onHint={handleHint}
-            onNewGame={newGame}
+            onAutoComplete={handleAutoComplete}
+            onResign={handleResign}
+            onNewGame={handleNewGame}
             selectedMode={selectedMode}
             onSelectMode={setSelectedMode}
           />
@@ -229,7 +300,7 @@ export default function Board() {
         </header>
 
         <main className="flex-1 flex flex-col px-2 pt-2 pb-2 overflow-hidden relative">
-          {gameStatus === 'idle' ? (
+          {!showBoard ? (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-[#00f0ff] to-[#b44dff] bg-clip-text text-transparent mb-4">
@@ -243,7 +314,7 @@ export default function Board() {
                       className="px-6 py-3 rounded-lg bg-indigo-900/60 border border-indigo-700/50
                                  hover:border-[#00f0ff]/40 hover:shadow-[0_0_15px_rgba(0,240,255,0.1)]
                                  transition-all text-white font-medium"
-                      onClick={() => newGame(mode)}
+                      onClick={() => handleNewGame(mode)}
                     >
                       {mode === 'easy' ? '1 Suit (Easy)' : mode === 'medium' ? '2 Suits (Medium)' : '4 Suits (Hard)'}
                     </button>
@@ -255,17 +326,25 @@ export default function Board() {
             <LayoutGroup>
               <div className="flex-1 flex min-h-0 overflow-x-auto">
                 <div className="flex gap-1.5 min-w-full px-1">
-                  {columns.map((col, idx) => (
-                    <Column
-                      key={`col-${idx}`}
-                      cards={col}
-                      columnIndex={idx}
-                      isDragTarget={dragTargetColumn === idx}
-                      selectedCardIndex={selectedColumn === idx ? selectedCardIndex : null}
-                      onCardPointerDown={(cardIndex, e) => handleCardPointerDown(idx, cardIndex, e)}
-                      onColumnClick={() => handleColumnClick(idx)}
-                    />
-                  ))}
+                  {columns.map((col, idx) => {
+                    const isHintSource = currentHint?.fromColumn === idx
+                    const isHintTarget = currentHint?.toColumn === idx
+
+                    return (
+                      <Column
+                        key={`col-${idx}`}
+                        cards={col}
+                        columnIndex={idx}
+                        isDragTarget={dragTargetColumn === idx}
+                        isHintTarget={isHintTarget}
+                        selectedCardIndex={isHintSource
+                          ? col.length - (currentHint?.cardCount ?? 0)
+                          : selectedColumn === idx ? selectedCardIndex : null}
+                        onCardPointerDown={(cardIndex, e) => handleCardPointerDown(idx, cardIndex, e)}
+                        onColumnClick={() => handleColumnClick(idx)}
+                      />
+                    )
+                  })}
                 </div>
               </div>
             </LayoutGroup>
@@ -342,6 +421,20 @@ export default function Board() {
           )}
         </AnimatePresence>
       </div>
+
+      <WinScreen
+        visible={showWinScreen}
+        gameMode={gameMode}
+        moves={moves}
+        timeMs={elapsedMs}
+        onNewGame={() => handleNewGame(selectedMode || gameMode)}
+        onViewStats={() => setShowStats(true)}
+      />
+
+      <StatsDashboard
+        visible={showStats}
+        onClose={() => setShowStats(false)}
+      />
     </div>
   )
 }

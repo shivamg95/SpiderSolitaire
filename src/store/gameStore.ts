@@ -224,7 +224,27 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const state = get()
     if (!canAutoComplete(state.columns, state.stock)) return 0
 
-    return MAX_FOUNDATIONS - state.foundations
+    let currentColumns = state.columns.map(col => [...col])
+    let currentFoundations = state.foundations
+    let totalRemoved = 0
+
+    while (currentFoundations < MAX_FOUNDATIONS) {
+      const { columns: cleaned, removed } = removeCompleteSequences(currentColumns)
+      if (removed === 0) break
+      currentColumns = cleaned
+      currentFoundations += removed
+      totalRemoved += removed
+    }
+
+    set({
+      columns: currentColumns,
+      foundations: currentFoundations,
+      moves: state.moves + 1,
+      gameStatus: currentFoundations >= MAX_FOUNDATIONS ? 'won' : state.gameStatus,
+    })
+
+    saveToStorage(get() as GameState)
+    return totalRemoved
   },
 
   loadGame: () => {

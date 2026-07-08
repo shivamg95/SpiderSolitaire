@@ -1,13 +1,17 @@
-import { Undo2, Redo2, Lightbulb, Play } from 'lucide-react'
+import { Undo2, Redo2, Lightbulb, Play, Flag, Sparkles } from 'lucide-react'
 import type { GameMode } from '../types'
 
 interface ControlsProps {
   moves: number
   hasUndo: boolean
   hasRedo: boolean
+  canAutoComplete: boolean
+  gameInProgress: boolean
   onUndo: () => void
   onRedo: () => void
   onHint: () => void
+  onAutoComplete: () => void
+  onResign: () => void
   onNewGame: (mode: GameMode) => void
   selectedMode: GameMode | null
   onSelectMode: (mode: GameMode) => void
@@ -29,9 +33,13 @@ export default function Controls({
   moves,
   hasUndo,
   hasRedo,
+  canAutoComplete,
+  gameInProgress,
   onUndo,
   onRedo,
   onHint,
+  onAutoComplete,
+  onResign,
   onNewGame,
   selectedMode,
   onSelectMode,
@@ -79,7 +87,7 @@ export default function Controls({
       <button
         className="p-1.5 rounded-md bg-indigo-900/50 text-indigo-300 hover:bg-indigo-800/60 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         onClick={onUndo}
-        disabled={!hasUndo}
+        disabled={!hasUndo || !gameInProgress}
         title="Undo"
       >
         <Undo2 className="w-4 h-4" />
@@ -87,18 +95,39 @@ export default function Controls({
       <button
         className="p-1.5 rounded-md bg-indigo-900/50 text-indigo-300 hover:bg-indigo-800/60 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         onClick={onRedo}
-        disabled={!hasRedo}
+        disabled={!hasRedo || !gameInProgress}
         title="Redo"
       >
         <Redo2 className="w-4 h-4" />
       </button>
       <button
-        className="p-1.5 rounded-md bg-indigo-900/50 text-indigo-300 hover:bg-indigo-800/60 transition-colors"
+        className="p-1.5 rounded-md bg-indigo-900/50 text-indigo-300 hover:bg-indigo-800/60 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         onClick={onHint}
+        disabled={!gameInProgress}
         title="Hint"
       >
         <Lightbulb className="w-4 h-4" />
       </button>
+
+      {canAutoComplete && (
+        <button
+          className="p-1.5 rounded-md bg-[#4dff88]/20 text-[#4dff88] hover:bg-[#4dff88]/30 transition-colors animate-pulse"
+          onClick={onAutoComplete}
+          title="Auto Complete!"
+        >
+          <Sparkles className="w-4 h-4" />
+        </button>
+      )}
+
+      {gameInProgress && (
+        <button
+          className="p-1.5 rounded-md bg-red-900/30 text-red-400/60 hover:bg-red-900/50 hover:text-red-400 transition-colors"
+          onClick={onResign}
+          title="Resign"
+        >
+          <Flag className="w-4 h-4" />
+        </button>
+      )}
 
       <div className="w-px h-5 bg-indigo-700/50" />
 
