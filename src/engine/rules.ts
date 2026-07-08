@@ -31,7 +31,6 @@ export function isMovableRun(cards: Card[], startIndex: number): boolean {
     if (card.suit !== suit) return false
     if (card.rank !== expectedRank) return false
     expectedRank = (expectedRank - 1) as Rank
-    if (expectedRank < 1) return false
   }
 
   return true
