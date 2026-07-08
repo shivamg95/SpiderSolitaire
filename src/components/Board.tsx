@@ -17,7 +17,7 @@ import { getValidRunFrom, findAllValidMoves, canAutoComplete, findBestTarget } f
 import { getRankName, SUIT_SYMBOLS } from '../types'
 import { useCardDimensions } from '../hooks/useCardDimensions'
 import { TABLEAU_COLUMNS, COLUMN_GAP, CONTAINER_PADDING_X } from '../constants'
-import type { GameMode, Card as CardType, Move, GameSnapshot, MoveRecord, GameStatus } from '../types'
+import type { GameMode, Card as CardType, Move, GameSnapshot, MoveRecord, GameStatus, Suit } from '../types'
 
 const MAX_TIMELINES = 3
 const TIMELINE_NAMES = ['Alpha', 'Beta', 'Gamma']
@@ -26,6 +26,7 @@ interface TimelineEntry {
   columns: GameSnapshot['columns']
   stock: GameSnapshot['stock']
   foundations: number
+  completedSuits: Suit[]
   moves: number
   gameMode: GameMode
   gameStatus: GameStatus
@@ -52,6 +53,7 @@ export default function Board() {
     columns,
     stock,
     foundations,
+    completedSuits,
     moves,
     gameMode,
     gameStatus,
@@ -147,6 +149,7 @@ export default function Board() {
       columns: columns.map(col => col.map(c => ({ ...c }))),
       stock: stock.map(c => ({ ...c })),
       foundations,
+      completedSuits: [...completedSuits],
       moves,
       gameMode,
       gameStatus,
@@ -155,12 +158,14 @@ export default function Board() {
         columns: snap.columns.map(col => col.map(c => ({ ...c }))),
         stock: snap.stock.map(c => ({ ...c })),
         foundations: snap.foundations,
+        completedSuits: snap.completedSuits ?? [],
         moves: snap.moves,
       })),
       redoStack: redoStack.map(snap => ({
         columns: snap.columns.map(col => col.map(c => ({ ...c }))),
         stock: snap.stock.map(c => ({ ...c })),
         foundations: snap.foundations,
+        completedSuits: snap.completedSuits ?? [],
         moves: snap.moves,
       })),
       moveHistory: moveHistory.map(r => ({ ...r })),
@@ -168,7 +173,7 @@ export default function Board() {
     setTimelines(prev => prev.map((t, i) =>
       i === activeTimelineIndex ? state : t
     ))
-  }, [timelines, activeTimelineIndex, columns, stock, foundations, moves, gameMode, gameStatus, startTime, undoStack, redoStack, moveHistory])
+  }, [timelines, activeTimelineIndex, columns, stock, foundations, completedSuits, moves, gameMode, gameStatus, startTime, undoStack, redoStack, moveHistory])
 
   const handleSplitTimeline = useCallback(() => {
     if (timelines.length >= MAX_TIMELINES) return
@@ -177,6 +182,7 @@ export default function Board() {
       columns: columns.map(col => col.map(c => ({ ...c }))),
       stock: stock.map(c => ({ ...c })),
       foundations,
+      completedSuits: [...completedSuits],
       moves,
       gameMode,
       gameStatus,
@@ -185,19 +191,21 @@ export default function Board() {
         columns: snap.columns.map(col => col.map(c => ({ ...c }))),
         stock: snap.stock.map(c => ({ ...c })),
         foundations: snap.foundations,
+        completedSuits: snap.completedSuits ?? [],
         moves: snap.moves,
       })),
       redoStack: redoStack.map(snap => ({
         columns: snap.columns.map(col => col.map(c => ({ ...c }))),
         stock: snap.stock.map(c => ({ ...c })),
         foundations: snap.foundations,
+        completedSuits: snap.completedSuits ?? [],
         moves: snap.moves,
       })),
       moveHistory: moveHistory.map(r => ({ ...r })),
     }
     setTimelines(prev => [...prev, state])
     setActiveTimelineIndex(timelines.length)
-  }, [timelines, saveCurrentTimeline, columns, stock, foundations, moves, gameMode, gameStatus, startTime, undoStack, redoStack, moveHistory])
+  }, [timelines, saveCurrentTimeline, columns, stock, foundations, completedSuits, moves, gameMode, gameStatus, startTime, undoStack, redoStack, moveHistory])
 
   const handleSwitchTimeline = useCallback((index: number) => {
     if (index === activeTimelineIndex) return
@@ -208,6 +216,7 @@ export default function Board() {
       target.columns,
       target.stock,
       target.foundations,
+      target.completedSuits ?? [],
       target.moves,
       target.gameMode,
       target.gameStatus,
@@ -246,6 +255,7 @@ export default function Board() {
         columns: columns.map(col => col.map(c => ({ ...c }))),
         stock: stock.map(c => ({ ...c })),
         foundations,
+        completedSuits: [],
         moves,
         gameMode,
         gameStatus: 'playing',
@@ -435,10 +445,10 @@ export default function Board() {
                 cardWidth={dims.cardWidth}
               />
               {showBoard && (
-                <Foundation completed={foundations} />
+                <Foundation completedSuits={completedSuits} />
               )}
             </div>
-            <div className="md:hidden text-[11px] text-indigo-400/60 font-mono">
+            <div className="md:hidden text-[11px] text-indigo-300/80 font-mono">
               {gameStatus === 'won' && (
                 <span className="text-[#ffd700] font-bold">Victory!</span>
               )}
@@ -469,7 +479,7 @@ export default function Board() {
             />
           </div>
 
-          <div className="hidden md:block text-[11px] text-indigo-400/60 font-mono min-w-[60px] text-right">
+          <div className="hidden md:block text-[11px] text-indigo-300/80 font-mono min-w-[60px] text-right">
             {gameStatus === 'won' && (
               <span className="text-[#ffd700] font-bold">Victory!</span>
             )}
@@ -492,30 +502,48 @@ export default function Board() {
           {!showBoard ? (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-[#00f0ff] to-[#b44dff] bg-clip-text text-transparent mb-4">
+                <motion.h1
+                  className="text-3xl font-bold bg-gradient-to-r from-[#00f0ff] to-[#b44dff] bg-clip-text text-transparent mb-4"
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, ease: 'easeOut' }}
+                >
                   Spider Solitaire
-                </h1>
-                <p className="text-indigo-400/60 mb-6">Select a difficulty and start a new game</p>
+                </motion.h1>
+                <motion.p
+                  className="text-indigo-300/80 mb-6"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.15, duration: 0.4 }}
+                >
+                  Select a difficulty and start a new game
+                </motion.p>
                 <div className="flex gap-3 justify-center mb-4">
-                  {(['easy', 'medium', 'hard'] as GameMode[]).map((mode) => (
-                    <button
+                  {(['easy', 'medium', 'hard'] as GameMode[]).map((mode, i) => (
+                    <motion.button
                       key={mode}
                       className="px-6 py-3 rounded-lg bg-indigo-900/60 border border-indigo-700/50
                                  hover:border-[#00f0ff]/40 hover:shadow-[0_0_15px_rgba(0,240,255,0.1)]
                                  transition-all text-white font-medium"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.25 + i * 0.1, duration: 0.4, ease: 'easeOut' }}
                       onClick={() => handleNewGame(mode)}
                     >
                       {mode === 'easy' ? '1 Suit (Easy)' : mode === 'medium' ? '2 Suits (Medium)' : '4 Suits (Hard)'}
-                    </button>
+                    </motion.button>
                   ))}
                 </div>
-                <button
-                  className="px-5 py-2 rounded-lg text-indigo-400/60 hover:text-indigo-300 border border-indigo-700/30 hover:border-indigo-600/50 transition-all text-sm"
+                <motion.button
+                  className="px-5 py-2 rounded-lg text-indigo-300/80 hover:text-indigo-300 border border-indigo-700/30 hover:border-indigo-600/50 transition-all text-sm"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.55, duration: 0.4 }}
                   onClick={() => setShowHelp(true)}
                 >
                   <HelpCircle className="w-4 h-4 inline mr-1.5" />
                   How to Play
-                </button>
+                </motion.button>
               </div>
             </div>
           ) : (
@@ -573,6 +601,8 @@ export default function Board() {
             const gGlowBlur = Math.round(gw * 0.31)
             const isRed = drag.card.suit === 'hearts' || drag.card.suit === 'diamonds'
             const gSuitColor = isRed ? 'text-red-500' : 'text-gray-900'
+            const stackOffset = Math.round(gw * 0.06)
+            const stackCount = Math.min(drag.runSize, 4)
 
             return (
             <motion.div
@@ -580,17 +610,41 @@ export default function Board() {
               style={{
                 width: gw,
                 aspectRatio: '5 / 7',
-                left: drag.currentX - dims.halfWidth,
-                top: drag.currentY - dims.halfHeight,
                 borderRadius: gRadius,
-                background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
-                boxShadow: `0 ${gShadowY}px ${gShadowBlur}px rgba(0,240,255,0.4), 0 0 ${gGlowBlur}px rgba(180,77,255,0.3)`,
+                x: drag.currentX - dims.halfWidth,
+                y: drag.currentY - dims.halfHeight,
+                rotate: Math.max(-4, Math.min(4, (drag.currentX - drag.startX) * 0.03)),
               }}
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 0.95, scale: 1.03 }}
               exit={{ opacity: 0, scale: 0.5 }}
-              transition={{ type: 'spring', stiffness: 600, damping: 25 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
             >
+              {/* Stacked cards behind the ghost */}
+              {stackCount > 1 && Array.from({ length: stackCount - 1 }).map((_, si) => (
+                <div
+                  key={si}
+                  className="absolute rounded-md overflow-hidden"
+                  style={{
+                    width: gw,
+                    aspectRatio: '5 / 7',
+                    top: (si + 1) * stackOffset,
+                    left: (si + 1) * stackOffset,
+                    borderRadius: gRadius,
+                    background: 'linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%)',
+                    boxShadow: `0 1px 4px rgba(0,0,0,0.2)`,
+                    opacity: 0.4 - si * 0.1,
+                  }}
+                />
+              ))}
+              {/* Main ghost card */}
+              <div
+                className="absolute inset-0 rounded-md"
+                style={{
+                  background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                  boxShadow: `0 ${gShadowY}px ${gShadowBlur}px rgba(0,240,255,0.4), 0 0 ${gGlowBlur}px rgba(180,77,255,0.3)`,
+                }}
+              />
               <div
                 className="absolute flex flex-col items-center leading-none"
                 style={{ top: gCornerTop, left: gCornerSide }}

@@ -1,4 +1,4 @@
-import type { Card, Move, Rank } from '../types'
+import type { Card, Move, Rank, Suit } from '../types'
 import { TABLEAU_COLUMNS } from '../types'
 
 export function isKing(rank: Rank): boolean {
@@ -260,27 +260,28 @@ export function executeMove(
 export function removeCompleteSequences(columns: Card[][]): {
   columns: Card[][]
   removed: number
+  completedSuits: Suit[]
 } {
   const newColumns = columns.map((col) => [...col])
   let removed = 0
+  const suits: Suit[] = []
 
   for (let col = 0; col < TABLEAU_COLUMNS; col++) {
     const sequenceStart = findCompleteSequence(newColumns[col])
     if (sequenceStart >= 0) {
+      suits.push(newColumns[col][sequenceStart].suit)
       newColumns[col].splice(sequenceStart, 13)
       removed++
 
-      // Flip the new top card
       if (newColumns[col].length > 0 && !newColumns[col][newColumns[col].length - 1].faceUp) {
         newColumns[col][newColumns[col].length - 1].faceUp = true
       }
 
-      // Check again in the same column (unlikely but possible with cascading)
       col--
     }
   }
 
-  return { columns: newColumns, removed }
+  return { columns: newColumns, removed, completedSuits: suits }
 }
 
 export function suggestMove(columns: Card[][]): Move | null {

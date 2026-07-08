@@ -35,6 +35,11 @@ body {
   height: 100dvh;
 }
 
+button:focus-visible {
+  outline: 2px solid #00f0ff;
+  outline-offset: 2px;
+}
+
 .momentum-scroll {
   -webkit-overflow-scrolling: touch;
 }

@@ -19,7 +19,7 @@ const sections = [
         <p>Build sequences from <strong className="text-white">King down to Ace</strong> in the same suit.</p>
         <p>Complete a full K-to-A sequence to <strong className="text-[#ffd700]">clear</strong> it from the board. Clear all <strong className="text-white">8 sequences</strong> to win!</p>
         <div className="mt-2 p-2 rounded bg-white/5 border border-indigo-700/20">
-          <p className="text-xs text-indigo-400/60 mb-1">Game Modes:</p>
+          <p className="text-xs text-indigo-300/80 mb-1">Game Modes:</p>
           <div className="flex gap-2 text-xs">
             <span className="px-2 py-0.5 rounded bg-emerald-600/30 text-emerald-400">Easy: 1 Suit (Spades)</span>
             <span className="px-2 py-0.5 rounded bg-amber-600/30 text-amber-400">Medium: 2 Suits</span>
@@ -72,7 +72,7 @@ const sections = [
         <p>The <strong className="text-white">stock pile</strong> (top-left) contains 50 cards.</p>
         <p>Click to <strong className="text-white">deal 1 card face-up to each column</strong>.</p>
         <p className="text-xs text-amber-400/80">Cannot deal if any column is empty — fill empty columns first!</p>
-        <p className="text-xs text-indigo-400/60">5 total deals available (each deals 10 cards).</p>
+        <p className="text-xs text-indigo-300/80">5 total deals available (each deals 10 cards).</p>
       </div>
     ),
   },
@@ -116,7 +116,7 @@ const sections = [
           <p><strong className="text-white">5.</strong> Compare outcomes and pick the best path!</p>
         </div>
         
-        <p className="text-xs text-indigo-400/60">Up to 3 parallel timelines simultaneously.</p>
+        <p className="text-xs text-indigo-300/80">Up to 3 parallel timelines simultaneously.</p>
       </div>
     ),
   },
@@ -152,7 +152,7 @@ const sections = [
           </div>
         </div>
 
-        <p className="text-xs text-indigo-400/60">Includes accuracy %, win-probability graph, and clickable move-by-move review with board snapshots.</p>
+        <p className="text-xs text-indigo-300/80">Includes accuracy %, win-probability graph, and clickable move-by-move review with board snapshots.</p>
       </div>
     ),
   },
@@ -191,7 +191,7 @@ export default function HowToPlay({ visible, onClose }: HowToPlayProps) {
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-white">How to Play</h2>
-                  <p className="text-xs text-indigo-400/60">Spider Solitaire — Quantum Edition</p>
+                  <p className="text-xs text-indigo-300/80">Spider Solitaire — Quantum Edition</p>
                 </div>
               </div>
               <button
@@ -213,7 +213,7 @@ export default function HowToPlay({ visible, onClose }: HowToPlayProps) {
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap
                       ${isActive
                         ? 'bg-white/10 text-white'
-                        : 'text-indigo-400/60 hover:text-indigo-300 hover:bg-white/[0.04]'
+                        : 'text-indigo-300/80 hover:text-indigo-300 hover:bg-white/[0.04]'
                       }
                     `}
                     onClick={() => setActiveSection(s.id)}
@@ -239,7 +239,7 @@ export default function HowToPlay({ visible, onClose }: HowToPlayProps) {
 
             {/* Footer */}
             <div className="px-6 py-3 border-t border-indigo-800/20 flex items-center justify-between">
-              <p className="text-xs text-indigo-400/40">Quantum Timeline & Nebula Insights</p>
+              <p className="text-xs text-indigo-300/60">Quantum Timeline & Nebula Insights</p>
               <button
                 className="px-4 py-2 rounded-lg bg-[#00f0ff]/20 border border-[#00f0ff]/40
                            text-[#00f0ff] font-medium hover:bg-[#00f0ff]/30 transition-all text-sm"

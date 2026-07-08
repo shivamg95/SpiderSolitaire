@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Card, GameMode, GameSnapshot, GameState, GameStatus, Move, MoveRecord } from '../types'
+import type { Card, GameMode, GameSnapshot, GameState, GameStatus, Move, MoveRecord, Suit } from '../types'
 import { MAX_FOUNDATIONS, TABLEAU_COLUMNS } from '../types'
 import { createDeck, dealFromStock, dealGame, resetCardIdCounter, shuffle } from '../engine/deck'
 import {
@@ -25,7 +25,7 @@ interface GameActions {
   autoComplete: () => number
   loadGame: () => boolean
   resign: () => void
-  restoreTimeline: (columns: Card[][], stock: Card[], foundations: number, moves: number, gameMode: GameMode, gameStatus: GameStatus, startTime: number, undoStack: GameSnapshot[], redoStack: GameSnapshot[]) => void
+  restoreTimeline: (columns: Card[][], stock: Card[], foundations: number, completedSuits: Suit[], moves: number, gameMode: GameMode, gameStatus: GameStatus, startTime: number, undoStack: GameSnapshot[], redoStack: GameSnapshot[]) => void
   getMoveHistory: () => MoveRecord[]
   clearMoveHistory: () => void
 }
@@ -39,17 +39,19 @@ function snapshot(state: GameState): GameSnapshot {
     ),
     stock: state.stock.map((c) => ({ ...c })),
     foundations: state.foundations,
+    completedSuits: [...state.completedSuits],
     moves: state.moves,
   }
 }
 
-function restoreSnapshot(snap: GameSnapshot): Pick<GameState, 'columns' | 'stock' | 'foundations' | 'moves'> {
+function restoreSnapshot(snap: GameSnapshot): Pick<GameState, 'columns' | 'stock' | 'foundations' | 'completedSuits' | 'moves'> {
   return {
     columns: snap.columns.map((col) =>
       col.map((c) => ({ ...c }))
     ),
     stock: snap.stock.map((c) => ({ ...c })),
     foundations: snap.foundations,
+    completedSuits: [...(snap.completedSuits ?? [])],
     moves: snap.moves,
   }
 }
@@ -79,6 +81,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   columns: [],
   stock: [],
   foundations: 0,
+  completedSuits: [],
   moves: 0,
   gameMode: 'easy',
   gameStatus: 'idle',
@@ -97,6 +100,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       columns,
       stock,
       foundations: 0,
+      completedSuits: [],
       moves: 0,
       gameMode: mode,
       gameStatus: 'playing',
@@ -128,9 +132,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     let newColumns = executeMove(state.columns, { fromColumn, toColumn, cardCount })
     let newMoves = state.moves + 1
 
-    const { columns: cleaned, removed } = removeCompleteSequences(newColumns)
+    const { columns: cleaned, removed, completedSuits } = removeCompleteSequences(newColumns)
     newColumns = cleaned
     const newFoundations = state.foundations + removed
+    const newCompletedSuits = [...state.completedSuits, ...completedSuits]
 
     let newStatus: GameState['gameStatus'] = state.gameStatus
     if (newFoundations >= MAX_FOUNDATIONS) {
@@ -141,6 +146,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       columns: newColumns.map(col => col.map(c => ({ ...c }))),
       stock: state.stock.map(c => ({ ...c })),
       foundations: newFoundations,
+      completedSuits: [...newCompletedSuits],
       moves: newMoves,
     }
 
@@ -155,6 +161,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const updatedState: Partial<GameState> = {
       columns: newColumns,
       foundations: newFoundations,
+      completedSuits: newCompletedSuits,
       moves: newMoves,
       gameStatus: newStatus,
       undoStack: [...state.undoStack, undoSnap],
@@ -186,6 +193,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       columns: columns.map(col => col.map(c => ({ ...c }))),
       stock: stock.map(c => ({ ...c })),
       foundations: state.foundations,
+      completedSuits: [...state.completedSuits],
       moves: state.moves + 1,
     }
 
@@ -265,19 +273,22 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     let currentColumns = state.columns.map(col => [...col])
     let currentFoundations = state.foundations
+    let allSuits = [...state.completedSuits]
     let totalRemoved = 0
 
     while (currentFoundations < MAX_FOUNDATIONS) {
-      const { columns: cleaned, removed } = removeCompleteSequences(currentColumns)
+      const { columns: cleaned, removed, completedSuits } = removeCompleteSequences(currentColumns)
       if (removed === 0) break
       currentColumns = cleaned
       currentFoundations += removed
+      allSuits.push(...completedSuits)
       totalRemoved += removed
     }
 
     set({
       columns: currentColumns,
       foundations: currentFoundations,
+      completedSuits: allSuits,
       moves: state.moves + 1,
       gameStatus: currentFoundations >= MAX_FOUNDATIONS ? 'won' : state.gameStatus,
     })
@@ -321,11 +332,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
     saveToStorage(get() as GameState)
   },
 
-  restoreTimeline: (columns, stock, foundations, moves, gameMode, gameStatus, startTime, undoStack, redoStack) => {
+  restoreTimeline: (columns, stock, foundations, completedSuits, moves, gameMode, gameStatus, startTime, undoStack, redoStack) => {
     set({
       columns: columns.map(col => col.map(c => ({ ...c }))),
       stock: stock.map(c => ({ ...c })),
       foundations,
+      completedSuits: [...completedSuits],
       moves,
       gameMode,
       gameStatus,
@@ -334,12 +346,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
         columns: s.columns.map(col => col.map(c => ({ ...c }))),
         stock: s.stock.map(c => ({ ...c })),
         foundations: s.foundations,
+        completedSuits: s.completedSuits ?? [],
         moves: s.moves,
       })),
       redoStack: redoStack.map(s => ({
         columns: s.columns.map(col => col.map(c => ({ ...c }))),
         stock: s.stock.map(c => ({ ...c })),
         foundations: s.foundations,
+        completedSuits: s.completedSuits ?? [],
         moves: s.moves,
       })),
       moveHistory: [],

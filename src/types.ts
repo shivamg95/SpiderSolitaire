@@ -17,6 +17,7 @@ export interface GameSnapshot {
   columns: Card[][]
   stock: Card[]
   foundations: number
+  completedSuits: Suit[]
   moves: number
 }
 
@@ -24,6 +25,7 @@ export interface GameState {
   columns: Card[][]
   stock: Card[]
   foundations: number
+  completedSuits: Suit[]
   moves: number
   gameMode: GameMode
   gameStatus: GameStatus

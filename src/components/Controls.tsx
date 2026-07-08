@@ -91,71 +91,78 @@ export default function Controls({
       <div className="w-px h-5 bg-indigo-700/50" />
 
       <button
-        className="p-2.5 rounded-md bg-indigo-900/50 text-indigo-300 hover:bg-indigo-800/60 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        className="p-2.5 rounded-md bg-indigo-900/50 text-indigo-300 hover:bg-indigo-800/60 disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
         onClick={onUndo}
         disabled={!hasUndo || !gameInProgress}
         title="Undo"
       >
         <Undo2 className="w-5 h-5" />
+        <span className="hidden md:inline text-xs">Undo</span>
       </button>
       <button
-        className="p-2.5 rounded-md bg-indigo-900/50 text-indigo-300 hover:bg-indigo-800/60 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        className="p-2.5 rounded-md bg-indigo-900/50 text-indigo-300 hover:bg-indigo-800/60 disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
         onClick={onRedo}
         disabled={!hasRedo || !gameInProgress}
         title="Redo"
       >
         <Redo2 className="w-5 h-5" />
+        <span className="hidden md:inline text-xs">Redo</span>
       </button>
       <button
-        className="p-2.5 rounded-md bg-indigo-900/50 text-indigo-300 hover:bg-indigo-800/60 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        className="p-2.5 rounded-md bg-indigo-900/50 text-indigo-300 hover:bg-indigo-800/60 disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
         onClick={onHint}
         disabled={!gameInProgress}
         title="Hint"
       >
         <Lightbulb className="w-5 h-5" />
+        <span className="hidden md:inline text-xs">Hint</span>
       </button>
 
       {canAutoComplete && (
         <button
-          className="p-2.5 rounded-md bg-[#4dff88]/20 text-[#4dff88] hover:bg-[#4dff88]/30 transition-colors animate-pulse"
+          className="p-2.5 rounded-md bg-[#4dff88]/20 text-[#4dff88] hover:bg-[#4dff88]/30 transition-colors animate-pulse flex items-center gap-1.5"
           onClick={onAutoComplete}
           title="Auto Complete!"
         >
           <Sparkles className="w-5 h-5" />
+          <span className="hidden md:inline text-xs">Auto</span>
         </button>
       )}
 
       {gameInProgress && canSplit && (
         <button
-          className="p-2.5 rounded-md bg-[#b44dff]/20 text-[#b44dff] hover:bg-[#b44dff]/30 transition-colors"
+          className="p-2.5 rounded-md bg-[#b44dff]/20 text-[#b44dff] hover:bg-[#b44dff]/30 transition-colors flex items-center gap-1.5"
           onClick={onSplitTimeline}
           title="Split Timeline"
         >
           <GitBranch className="w-5 h-5" />
+          <span className="hidden md:inline text-xs">Split</span>
         </button>
       )}
 
       {gameInProgress && (
         <button
-          className="p-2.5 rounded-md bg-red-900/30 text-red-400/60 hover:bg-red-900/50 hover:text-red-400 transition-colors"
+          className="p-2.5 rounded-md bg-red-900/30 text-red-400/60 hover:bg-red-900/50 hover:text-red-400 transition-colors flex items-center gap-1.5"
           onClick={onResign}
           title="Resign"
         >
           <Flag className="w-5 h-5" />
+          <span className="hidden md:inline text-xs">Resign</span>
         </button>
       )}
 
       <div className="w-px h-5 bg-indigo-700/50" />
 
       <button
-        className="p-2.5 rounded-md bg-indigo-900/50 text-indigo-400/60 hover:text-indigo-300 hover:bg-indigo-800/60 transition-colors"
+        className="p-2.5 rounded-md bg-indigo-900/50 text-indigo-300/80 hover:text-indigo-300 hover:bg-indigo-800/60 transition-colors flex items-center gap-1.5"
         onClick={onHelp}
         title="How to Play"
       >
         <HelpCircle className="w-5 h-5" />
+        <span className="hidden md:inline text-xs">Help</span>
       </button>
 
-      <span className="text-[11px] text-indigo-400/60 font-mono">
+      <span className="text-[11px] text-indigo-300/80 font-mono">
         Moves: {moves}
       </span>
     </div>

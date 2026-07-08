@@ -26,7 +26,7 @@ export default function Card({ card, cardWidth, onClick, onPointerDown, isBlocke
   const w = cardWidth
 
   const cornerSize = fontSize(0.15, w, 9, 24)
-  const hoverLift = Math.round(w * 0.03)
+  const hoverLift = Math.round(w * 0.06)
 
   const cornerTop = Math.round(w * 0.031)
   const cornerSide = Math.round(w * 0.062)
@@ -35,6 +35,7 @@ export default function Card({ card, cardWidth, onClick, onPointerDown, isBlocke
   const shadowY = Math.round(w * 0.031)
   const shadowBlur = Math.round(w * 0.125)
   const tapBlur = Math.round(w * 0.25)
+  const hoverGlow = Math.round(w * 0.12)
 
   const hatchInset = Math.round(w * 0.047)
   const hatchHalf = Math.round(w * 0.031)
@@ -44,28 +45,31 @@ export default function Card({ card, cardWidth, onClick, onPointerDown, isBlocke
   useEffect(() => {
     if (card.faceUp) {
       setJustFlipped(true)
-      const timer = setTimeout(() => setJustFlipped(false), 600)
+      const timer = setTimeout(() => setJustFlipped(false), 350)
       return () => clearTimeout(timer)
     }
   }, [card.faceUp])
 
   const unselShadow = `0 ${shadowY}px ${shadowBlur}px rgba(0,0,0,0.35)`
+  const hoverShadow = `${unselShadow}, 0 0 ${hoverGlow}px rgba(0,240,255,0.25)`
   const tapShadow = `0 0 ${tapBlur}px rgba(0,240,255,0.5)`
 
   return (
     <motion.div
-      layout
+      layout="position"
       layoutId={card.id}
-      initial={card.faceUp ? { opacity: 0, scale: 0.9 } : undefined}
+      initial={false}
       animate={{
         opacity: isBlocked ? 0.5 : 1,
         scale: 1,
+        scaleX: justFlipped ? [0.3, 1] : 1,
         boxShadow: card.faceUp && !isBlocked ? unselShadow : 'none',
       }}
       exit={{ opacity: 0, scale: 0.85, transition: { duration: 0.12 } }}
       transition={{
-        layout: { type: 'spring', stiffness: 500, damping: 35, mass: 0.8 },
-        default: { duration: 0.2 },
+        layout: { type: 'spring', stiffness: 300, damping: 25, mass: 1 },
+        scaleX: { duration: 0.3, ease: 'easeOut' },
+        default: { duration: 0.15 },
       }}
       className="absolute select-none overflow-hidden"
       style={{
@@ -79,6 +83,7 @@ export default function Card({ card, cardWidth, onClick, onPointerDown, isBlocke
         borderRadius,
         touchAction: 'none',
         cursor: card.faceUp && !isBlocked ? 'grab' : 'not-allowed',
+        willChange: 'transform',
       }}
       onClick={(e) => {
         e.stopPropagation()
@@ -88,8 +93,8 @@ export default function Card({ card, cardWidth, onClick, onPointerDown, isBlocke
         e.stopPropagation()
         if (card.faceUp && !isBlocked) onPointerDown?.(e)
       }}
-      whileHover={card.faceUp && !isBlocked ? { scale: 1.03, y: offset - hoverLift } : undefined}
-      whileTap={card.faceUp && !isBlocked ? { scale: 0.95, boxShadow: tapShadow } : undefined}
+      whileHover={card.faceUp && !isBlocked ? { scale: 1.04, y: offset - hoverLift, boxShadow: hoverShadow } : undefined}
+      whileTap={card.faceUp && !isBlocked ? { scale: 0.92, boxShadow: tapShadow } : undefined}
     >
       {!card.faceUp ? (
         <>
@@ -128,15 +133,6 @@ export default function Card({ card, cardWidth, onClick, onPointerDown, isBlocke
         </>
       ) : (
         <>
-          {justFlipped && (
-            <motion.div
-              className="absolute inset-0 pointer-events-none z-10"
-              initial={{ opacity: 0.6 }}
-              animate={{ opacity: 0 }}
-              transition={{ duration: 0.5, ease: 'easeOut' }}
-              style={{ background: 'radial-gradient(ellipse at center, rgba(0,240,255,0.4) 0%, transparent 70%)', borderRadius }}
-            />
-          )}
           <div
             className="absolute inset-0"
             style={{

@@ -73,7 +73,7 @@ export default function PostGameReview({ visible, moveHistory, onClose, onNewGam
 
               <div className="flex items-center gap-4">
                 <div className="flex-1">
-                  <div className="text-xs text-indigo-400/60 mb-1">Accuracy</div>
+                  <div className="text-xs text-indigo-300/80 mb-1">Accuracy</div>
                   <div className="text-3xl font-bold text-white">{analysis.accuracy}%</div>
                 </div>
                 <div className="flex gap-3">
@@ -96,7 +96,7 @@ export default function PostGameReview({ visible, moveHistory, onClose, onNewGam
             <div className="px-6 py-4">
               {/* Score graph */}
               <div className="mb-6">
-                <div className="text-xs text-indigo-400/60 mb-2">Win Probability Over Moves</div>
+                <div className="text-xs text-indigo-300/80 mb-2">Win Probability Over Moves</div>
                 <div className="relative h-32 bg-black/30 rounded-lg border border-indigo-800/20 overflow-hidden">
                   <svg className="w-full h-full" viewBox={`0 0 ${normalizedScores.length - 1 || 1} 100`} preserveAspectRatio="none">
                     {normalizedScores.length > 1 && (
@@ -157,7 +157,7 @@ export default function PostGameReview({ visible, moveHistory, onClose, onNewGam
                     })}
                   </svg>
                 </div>
-                <div className="flex justify-between text-[9px] text-indigo-400/40 mt-1">
+                <div className="flex justify-between text-[9px] text-indigo-300/60 mt-1">
                   <span>Move 1</span>
                   <span>Move {analysis.moves.length}</span>
                 </div>
@@ -228,25 +228,25 @@ export default function PostGameReview({ visible, moveHistory, onClose, onNewGam
                             </div>
                           ))}
                           {col.length > 3 && (
-                            <div className="text-[7px] text-indigo-400/40">+{col.length - 3}</div>
+                            <div className="text-[7px] text-indigo-300/60">+{col.length - 3}</div>
                           )}
                         </div>
                       ))}
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 text-[10px]">
-                      <div className="text-indigo-400/60">
+                      <div className="text-indigo-300/80">
                         Score Δ: <span className={selectedMove.scoreDelta >= 0 ? 'text-[#4dff88]' : 'text-red-400'}>{selectedMove.scoreDelta >= 0 ? '+' : ''}{selectedMove.scoreDelta.toFixed(0)}</span>
                       </div>
-                      <div className="text-indigo-400/60">
+                      <div className="text-indigo-300/80">
                         Best Alt: <span className="text-[#00f0ff]">{selectedMove.bestAlternativeDelta >= 0 ? '+' : ''}{selectedMove.bestAlternativeDelta.toFixed(0)}</span>
                       </div>
                       {selectedMove.faceDownRevealed > 0 && (
-                        <div className="text-indigo-400/60">
+                        <div className="text-indigo-300/80">
                           Cards revealed: <span className="text-[#ffd700]">{selectedMove.faceDownRevealed}</span>
                         </div>
                       )}
-                      <div className="text-indigo-400/60">
+                      <div className="text-indigo-300/80">
                         Alternatives: <span className="text-white">{selectedMove.alternatives.length}</span>
                       </div>
                     </div>
@@ -266,7 +266,7 @@ export default function PostGameReview({ visible, moveHistory, onClose, onNewGam
                         ${selectedMoveIndex === i ? 'bg-white/10' : 'hover:bg-white/[0.03]'}`}
                       onClick={() => setSelectedMoveIndex(i)}
                     >
-                      <span className="text-[10px] text-indigo-400/40 w-8">{i + 1}</span>
+                      <span className="text-[10px] text-indigo-300/60 w-8">{i + 1}</span>
                       <Icon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: style.color }} />
                       <span className="text-[10px] text-indigo-300/80 flex-1 truncate">
                         {m.move.fromColumn === 'stock'

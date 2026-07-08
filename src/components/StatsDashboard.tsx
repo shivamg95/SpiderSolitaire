@@ -70,7 +70,7 @@ export default function StatsDashboard({ visible, onClose }: StatsDashboardProps
                   return (
                     <div key={mode} className={`rounded-lg border ${MODE_BORDERS[mode]} bg-white/[0.02] p-4`}>
                       <div className={`text-sm font-semibold mb-2 ${MODE_COLORS[mode]}`}>{MODE_LABELS[mode]}</div>
-                      <p className="text-indigo-400/40 text-xs">No games played yet</p>
+                      <p className="text-indigo-300/60 text-xs">No games played yet</p>
                     </div>
                   )
                 }
@@ -79,7 +79,7 @@ export default function StatsDashboard({ visible, onClose }: StatsDashboardProps
                   <div key={mode} className={`rounded-lg border ${MODE_BORDERS[mode]} bg-white/[0.02] p-4`}>
                     <div className="flex items-center justify-between mb-3">
                       <div className={`text-sm font-semibold ${MODE_COLORS[mode]}`}>{MODE_LABELS[mode]}</div>
-                      <div className="flex items-center gap-1 text-xs text-indigo-400/60">
+                      <div className="flex items-center gap-1 text-xs text-indigo-300/80">
                         <Target className="w-3 h-3" />
                         {getWinRate(s)}%
                       </div>
@@ -138,7 +138,7 @@ function StatCell({ icon, label, value }: { icon: React.ReactNode; label: string
     <div className="bg-black/20 rounded-md p-2 text-center border border-white/5">
       <div className="flex items-center justify-center gap-1 mb-0.5">
         {icon}
-        <span className="text-[9px] text-indigo-400/50">{label}</span>
+        <span className="text-[9px] text-indigo-300/60">{label}</span>
       </div>
       <div className="text-xs font-bold text-white">{value}</div>
     </div>

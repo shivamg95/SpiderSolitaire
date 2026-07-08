@@ -73,8 +73,17 @@ export default function Column({
       style={{ minHeight: height, touchAction: 'none' }}
     >
       {isEmpty ? (
-        <div className="text-indigo-600/30 text-xs font-medium pointer-events-none select-none">
-          {columnIndex + 1}
+        <div className="flex flex-col items-center pointer-events-none select-none gap-1">
+          <div
+            className="border border-indigo-500/20 rounded-md"
+            style={{
+              width: dims.cardWidth,
+              aspectRatio: '5 / 7',
+            }}
+          />
+          <span className="text-indigo-400/50 text-xs font-medium">
+            {columnIndex + 1}
+          </span>
         </div>
       ) : (
         <div className="relative w-full" style={{ minHeight: height }}>
