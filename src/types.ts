@@ -30,12 +30,35 @@ export interface GameState {
   startTime: number | null
   undoStack: GameSnapshot[]
   redoStack: GameSnapshot[]
+  moveHistory: MoveRecord[]
 }
 
 export interface Move {
   fromColumn: number | 'stock'
   toColumn: number
   cardCount: number
+}
+
+export type MoveClassification = 'brilliant' | 'excellent' | 'good' | 'inaccuracy' | 'blunder'
+
+export interface MoveRecord {
+  id: number
+  move: Move
+  snapshotBefore: GameSnapshot
+  snapshotAfter: GameSnapshot
+  classification?: MoveClassification
+  timestamp: number
+}
+
+export interface TimelineState {
+  gameState: GameSnapshot
+  gameMode: GameMode
+  startTime: number
+  gameStatus: GameStatus
+  undoStack: GameSnapshot[]
+  redoStack: GameSnapshot[]
+  moveHistory: MoveRecord[]
+  name: string
 }
 
 export const SUITS: Suit[] = ['spades', 'hearts', 'diamonds', 'clubs']

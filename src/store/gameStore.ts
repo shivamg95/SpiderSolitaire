@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { GameMode, GameSnapshot, GameState, Move } from '../types'
+import type { Card, GameMode, GameSnapshot, GameState, GameStatus, Move, MoveRecord } from '../types'
 import { MAX_FOUNDATIONS, TABLEAU_COLUMNS } from '../types'
 import { createDeck, dealFromStock, dealGame, resetCardIdCounter, shuffle } from '../engine/deck'
 import {
@@ -25,6 +25,9 @@ interface GameActions {
   autoComplete: () => number
   loadGame: () => boolean
   resign: () => void
+  restoreTimeline: (columns: Card[][], stock: Card[], foundations: number, moves: number, gameMode: GameMode, gameStatus: GameStatus, startTime: number, undoStack: GameSnapshot[], redoStack: GameSnapshot[]) => void
+  getMoveHistory: () => MoveRecord[]
+  clearMoveHistory: () => void
 }
 
 type GameStore = GameState & GameActions
@@ -82,6 +85,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   startTime: null,
   undoStack: [],
   redoStack: [],
+  moveHistory: [],
 
   newGame: (mode: GameMode) => {
     resetCardIdCounter()
@@ -99,6 +103,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       startTime: Date.now(),
       undoStack: [],
       redoStack: [],
+      moveHistory: [],
     })
 
     const state = get()
@@ -118,6 +123,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!isValidMove(state.columns, fromColumn, toColumn, startIndex)) return false
     if (!isMovableRun(sourceCol, startIndex)) return false
 
+    const beforeSnap = snapshot(state)
     const undoSnap = snapshot(state)
     let newColumns = executeMove(state.columns, { fromColumn, toColumn, cardCount })
     let newMoves = state.moves + 1
@@ -131,13 +137,29 @@ export const useGameStore = create<GameStore>((set, get) => ({
       newStatus = 'won'
     }
 
+    const afterSnap: GameSnapshot = {
+      columns: newColumns.map(col => col.map(c => ({ ...c }))),
+      stock: state.stock.map(c => ({ ...c })),
+      foundations: newFoundations,
+      moves: newMoves,
+    }
+
+    const moveRecord: MoveRecord = {
+      id: Date.now(),
+      move: { fromColumn, toColumn, cardCount },
+      snapshotBefore: beforeSnap,
+      snapshotAfter: afterSnap,
+      timestamp: Date.now(),
+    }
+
     const updatedState: Partial<GameState> = {
       columns: newColumns,
       foundations: newFoundations,
       moves: newMoves,
       gameStatus: newStatus,
       undoStack: [...state.undoStack, undoSnap],
-      redoStack: [], // Clear redo on new move
+      redoStack: [],
+      moveHistory: [...state.moveHistory, moveRecord],
     }
 
     set(updatedState)
@@ -156,8 +178,24 @@ export const useGameStore = create<GameStore>((set, get) => ({
       if (state.columns[i].length === 0) return false
     }
 
+    const beforeSnap = snapshot(state)
     const undoSnap = snapshot(state)
     const { stock, columns } = dealFromStock(state.stock, state.columns)
+
+    const afterSnap: GameSnapshot = {
+      columns: columns.map(col => col.map(c => ({ ...c }))),
+      stock: stock.map(c => ({ ...c })),
+      foundations: state.foundations,
+      moves: state.moves + 1,
+    }
+
+    const moveRecord: MoveRecord = {
+      id: Date.now(),
+      move: { fromColumn: 'stock', toColumn: 0, cardCount: TABLEAU_COLUMNS },
+      snapshotBefore: beforeSnap,
+      snapshotAfter: afterSnap,
+      timestamp: Date.now(),
+    }
 
     const updatedState: Partial<GameState> = {
       columns,
@@ -165,6 +203,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       moves: state.moves + 1,
       undoStack: [...state.undoStack, undoSnap],
       redoStack: [],
+      moveHistory: [...state.moveHistory, moveRecord],
     }
 
     set(updatedState)
@@ -265,6 +304,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         startTime: data.startTime ?? Date.now(),
         undoStack: data.undoStack ?? [],
         redoStack: data.redoStack ?? [],
+        moveHistory: [],
       })
 
       return true
@@ -279,5 +319,38 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     set({ gameStatus: 'lost' })
     saveToStorage(get() as GameState)
+  },
+
+  restoreTimeline: (columns, stock, foundations, moves, gameMode, gameStatus, startTime, undoStack, redoStack) => {
+    set({
+      columns: columns.map(col => col.map(c => ({ ...c }))),
+      stock: stock.map(c => ({ ...c })),
+      foundations,
+      moves,
+      gameMode,
+      gameStatus,
+      startTime,
+      undoStack: undoStack.map(s => ({
+        columns: s.columns.map(col => col.map(c => ({ ...c }))),
+        stock: s.stock.map(c => ({ ...c })),
+        foundations: s.foundations,
+        moves: s.moves,
+      })),
+      redoStack: redoStack.map(s => ({
+        columns: s.columns.map(col => col.map(c => ({ ...c }))),
+        stock: s.stock.map(c => ({ ...c })),
+        foundations: s.foundations,
+        moves: s.moves,
+      })),
+      moveHistory: [],
+    })
+  },
+
+  getMoveHistory: () => {
+    return get().moveHistory
+  },
+
+  clearMoveHistory: () => {
+    set({ moveHistory: [] })
   },
 }))

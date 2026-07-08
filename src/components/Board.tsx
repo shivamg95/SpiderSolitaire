@@ -2,16 +2,36 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion'
 import { useGameStore } from '../store/gameStore'
 import { useStatsStore } from '../store/statsStore'
+import { HelpCircle } from 'lucide-react'
 import Starfield from './Starfield'
 import Column, { getPointerColumnIndex } from './Column'
 import StockPile from './StockPile'
 import Foundation from './Foundation'
 import Controls from './Controls'
+import TimelineBar from './TimelineBar'
 import WinScreen from './WinScreen'
 import StatsDashboard from './StatsDashboard'
+import PostGameReview from './PostGameReview'
+import HowToPlay from './HowToPlay'
 import { getValidRunFrom, findAllValidMoves, canAutoComplete } from '../engine/rules'
 import { getRankName, SUIT_SYMBOLS } from '../types'
-import type { GameMode, Card as CardType, Move } from '../types'
+import type { GameMode, Card as CardType, Move, GameSnapshot, MoveRecord, GameStatus } from '../types'
+
+const MAX_TIMELINES = 3
+const TIMELINE_NAMES = ['Alpha', 'Beta', 'Gamma']
+
+interface TimelineEntry {
+  columns: GameSnapshot['columns']
+  stock: GameSnapshot['stock']
+  foundations: number
+  moves: number
+  gameMode: GameMode
+  gameStatus: GameStatus
+  startTime: number
+  undoStack: GameSnapshot[]
+  redoStack: GameSnapshot[]
+  moveHistory: MoveRecord[]
+}
 
 interface DragState {
   column: number
@@ -25,6 +45,7 @@ interface DragState {
 }
 
 export default function Board() {
+  const gameStore = useGameStore()
   const {
     columns,
     stock,
@@ -33,6 +54,9 @@ export default function Board() {
     gameMode,
     gameStatus,
     startTime,
+    undoStack,
+    redoStack,
+    moveHistory,
     moveCard,
     dealStock,
     undo,
@@ -42,7 +66,9 @@ export default function Board() {
     newGame,
     resign,
     autoComplete,
-  } = useGameStore()
+    restoreTimeline,
+    getMoveHistory,
+  } = gameStore
 
   const recordGame = useStatsStore(s => s.recordGame)
 
@@ -53,9 +79,15 @@ export default function Board() {
   const [dragTargetColumn, setDragTargetColumn] = useState<number | null>(null)
   const [showWinScreen, setShowWinScreen] = useState(false)
   const [showStats, setShowStats] = useState(false)
+  const [showPostGameReview, setShowPostGameReview] = useState(false)
+  const [showHelp, setShowHelp] = useState(false)
   const [hintIndex, setHintIndex] = useState(0)
   const [hintMoves, setHintMoves] = useState<Move[]>([])
   const [hasRecorded, setHasRecorded] = useState(false)
+
+  // Timeline state
+  const [timelines, setTimelines] = useState<TimelineEntry[]>([])
+  const [activeTimelineIndex, setActiveTimelineIndex] = useState(0)
 
   const prevFoundations = useRef(foundations)
   const prevGameStatus = useRef(gameStatus)
@@ -89,14 +121,104 @@ export default function Board() {
   }, [foundations])
 
   useEffect(() => {
-    if (prevGameStatus.current === 'playing' && gameStatus === 'won' && !hasRecorded) {
+    if (prevGameStatus.current === 'playing' && (gameStatus === 'won' || gameStatus === 'lost') && !hasRecorded) {
       const elapsed = startTime ? Date.now() - startTime : 0
-      recordGame(gameMode, true, moves, elapsed)
+      const won = gameStatus === 'won'
+      recordGame(gameMode, won, moves, elapsed)
       setHasRecorded(true)
-      setTimeout(() => setShowWinScreen(true), 600)
+
+      // Update timeline status
+      setTimelines(prev => prev.map((t, i) =>
+        i === activeTimelineIndex ? { ...t, gameStatus } : t
+      ))
+
+      setTimeout(() => {
+        setShowPostGameReview(true)
+      }, 400)
     }
     prevGameStatus.current = gameStatus
-  }, [gameStatus, gameMode, moves, startTime, recordGame, hasRecorded])
+  }, [gameStatus, gameMode, moves, startTime, recordGame, hasRecorded, activeTimelineIndex])
+
+  // Save current timeline before any state change
+  const saveCurrentTimeline = useCallback(() => {
+    if (timelines.length === 0) return
+    const state: TimelineEntry = {
+      columns: columns.map(col => col.map(c => ({ ...c }))),
+      stock: stock.map(c => ({ ...c })),
+      foundations,
+      moves,
+      gameMode,
+      gameStatus,
+      startTime: startTime ?? 0,
+      undoStack: undoStack.map(snap => ({
+        columns: snap.columns.map(col => col.map(c => ({ ...c }))),
+        stock: snap.stock.map(c => ({ ...c })),
+        foundations: snap.foundations,
+        moves: snap.moves,
+      })),
+      redoStack: redoStack.map(snap => ({
+        columns: snap.columns.map(col => col.map(c => ({ ...c }))),
+        stock: snap.stock.map(c => ({ ...c })),
+        foundations: snap.foundations,
+        moves: snap.moves,
+      })),
+      moveHistory: moveHistory.map(r => ({ ...r })),
+    }
+    setTimelines(prev => prev.map((t, i) =>
+      i === activeTimelineIndex ? state : t
+    ))
+  }, [timelines, activeTimelineIndex, columns, stock, foundations, moves, gameMode, gameStatus, startTime, undoStack, redoStack, moveHistory])
+
+  const handleSplitTimeline = useCallback(() => {
+    if (timelines.length >= MAX_TIMELINES) return
+    saveCurrentTimeline()
+    const state: TimelineEntry = {
+      columns: columns.map(col => col.map(c => ({ ...c }))),
+      stock: stock.map(c => ({ ...c })),
+      foundations,
+      moves,
+      gameMode,
+      gameStatus,
+      startTime: startTime ?? 0,
+      undoStack: undoStack.map(snap => ({
+        columns: snap.columns.map(col => col.map(c => ({ ...c }))),
+        stock: snap.stock.map(c => ({ ...c })),
+        foundations: snap.foundations,
+        moves: snap.moves,
+      })),
+      redoStack: redoStack.map(snap => ({
+        columns: snap.columns.map(col => col.map(c => ({ ...c }))),
+        stock: snap.stock.map(c => ({ ...c })),
+        foundations: snap.foundations,
+        moves: snap.moves,
+      })),
+      moveHistory: moveHistory.map(r => ({ ...r })),
+    }
+    setTimelines(prev => [...prev, state])
+    setActiveTimelineIndex(timelines.length)
+  }, [timelines, saveCurrentTimeline, columns, stock, foundations, moves, gameMode, gameStatus, startTime, undoStack, redoStack, moveHistory])
+
+  const handleSwitchTimeline = useCallback((index: number) => {
+    if (index === activeTimelineIndex) return
+    saveCurrentTimeline()
+    const target = timelines[index]
+    if (!target) return
+    restoreTimeline(
+      target.columns,
+      target.stock,
+      target.foundations,
+      target.moves,
+      target.gameMode,
+      target.gameStatus,
+      target.startTime,
+      target.undoStack,
+      target.redoStack,
+    )
+    setActiveTimelineIndex(index)
+    if (target.gameStatus === 'won' || target.gameStatus === 'lost') {
+      setShowPostGameReview(true)
+    }
+  }, [activeTimelineIndex, timelines, saveCurrentTimeline, restoreTimeline])
 
   const handleResign = useCallback(() => {
     const elapsed = startTime ? Date.now() - startTime : 0
@@ -107,11 +229,38 @@ export default function Board() {
   const handleNewGame = useCallback((mode: GameMode) => {
     setShowWinScreen(false)
     setShowStats(false)
+    setShowPostGameReview(false)
     setHasRecorded(false)
     setHintMoves([])
     setHintIndex(0)
+    setTimelines([])
+    setActiveTimelineIndex(0)
     newGame(mode)
   }, [newGame])
+
+  // Create initial timeline on new game
+  useEffect(() => {
+    if (gameStatus === 'playing' && timelines.length === 0 && columns.length > 0) {
+      const state: TimelineEntry = {
+        columns: columns.map(col => col.map(c => ({ ...c }))),
+        stock: stock.map(c => ({ ...c })),
+        foundations,
+        moves,
+        gameMode,
+        gameStatus: 'playing',
+        startTime: startTime ?? Date.now(),
+        undoStack: [],
+        redoStack: [],
+        moveHistory: [],
+      }
+      setTimelines([state])
+      setActiveTimelineIndex(0)
+    }
+    if (gameStatus === 'idle') {
+      setTimelines([])
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameStatus, columns.length])
 
   const handlePointerMove = useCallback((e: PointerEvent) => {
     if (!drag) return
@@ -255,6 +404,7 @@ export default function Board() {
   const isAutoCompletable = gameStatus === 'playing' && canAutoComplete(columns, stock)
   const showBoard = gameStatus !== 'idle'
   const elapsedMs = startTime ? Date.now() - startTime : 0
+  const timelineNames = timelines.map((_, i) => ({ name: TIMELINE_NAMES[i] || `T${i + 1}` }))
 
   return (
     <div className="fixed inset-0 flex flex-col bg-transparent text-white">
@@ -278,12 +428,15 @@ export default function Board() {
             hasUndo={hasUndo()}
             hasRedo={hasRedo()}
             canAutoComplete={isAutoCompletable}
+            canSplit={gameStatus === 'playing' && timelines.length < MAX_TIMELINES}
             gameInProgress={gameStatus === 'playing'}
             onUndo={undo}
             onRedo={redo}
             onHint={handleHint}
             onAutoComplete={handleAutoComplete}
             onResign={handleResign}
+            onSplitTimeline={handleSplitTimeline}
+            onHelp={() => setShowHelp(true)}
             onNewGame={handleNewGame}
             selectedMode={selectedMode}
             onSelectMode={setSelectedMode}
@@ -299,6 +452,15 @@ export default function Board() {
           </div>
         </header>
 
+        <TimelineBar
+          timelines={timelineNames}
+          activeIndex={activeTimelineIndex}
+          maxTimelines={MAX_TIMELINES}
+          onSwitch={handleSwitchTimeline}
+          onSplit={handleSplitTimeline}
+          visible={showBoard && timelines.length > 0}
+        />
+
         <main className="flex-1 flex flex-col px-2 pt-2 pb-2 overflow-hidden relative">
           {!showBoard ? (
             <div className="flex-1 flex items-center justify-center">
@@ -307,7 +469,7 @@ export default function Board() {
                   Spider Solitaire
                 </h1>
                 <p className="text-indigo-400/60 mb-6">Select a difficulty and start a new game</p>
-                <div className="flex gap-3 justify-center">
+                <div className="flex gap-3 justify-center mb-4">
                   {(['easy', 'medium', 'hard'] as GameMode[]).map((mode) => (
                     <button
                       key={mode}
@@ -320,6 +482,13 @@ export default function Board() {
                     </button>
                   ))}
                 </div>
+                <button
+                  className="px-5 py-2 rounded-lg text-indigo-400/60 hover:text-indigo-300 border border-indigo-700/30 hover:border-indigo-600/50 transition-all text-sm"
+                  onClick={() => setShowHelp(true)}
+                >
+                  <HelpCircle className="w-4 h-4 inline mr-1.5" />
+                  How to Play
+                </button>
               </div>
             </div>
           ) : (
@@ -423,7 +592,7 @@ export default function Board() {
       </div>
 
       <WinScreen
-        visible={showWinScreen}
+        visible={showWinScreen && !showPostGameReview}
         gameMode={gameMode}
         moves={moves}
         timeMs={elapsedMs}
@@ -431,9 +600,21 @@ export default function Board() {
         onViewStats={() => setShowStats(true)}
       />
 
+      <PostGameReview
+        visible={showPostGameReview}
+        moveHistory={getMoveHistory()}
+        onClose={() => setShowPostGameReview(false)}
+        onNewGame={() => handleNewGame(selectedMode || gameMode)}
+      />
+
       <StatsDashboard
         visible={showStats}
         onClose={() => setShowStats(false)}
+      />
+
+      <HowToPlay
+        visible={showHelp}
+        onClose={() => setShowHelp(false)}
       />
     </div>
   )

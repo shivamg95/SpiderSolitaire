@@ -1,4 +1,4 @@
-import { Undo2, Redo2, Lightbulb, Play, Flag, Sparkles } from 'lucide-react'
+import { Undo2, Redo2, Lightbulb, Play, Flag, Sparkles, GitBranch, HelpCircle } from 'lucide-react'
 import type { GameMode } from '../types'
 
 interface ControlsProps {
@@ -6,12 +6,15 @@ interface ControlsProps {
   hasUndo: boolean
   hasRedo: boolean
   canAutoComplete: boolean
+  canSplit: boolean
   gameInProgress: boolean
   onUndo: () => void
   onRedo: () => void
   onHint: () => void
   onAutoComplete: () => void
   onResign: () => void
+  onSplitTimeline: () => void
+  onHelp: () => void
   onNewGame: (mode: GameMode) => void
   selectedMode: GameMode | null
   onSelectMode: (mode: GameMode) => void
@@ -34,12 +37,15 @@ export default function Controls({
   hasUndo,
   hasRedo,
   canAutoComplete,
+  canSplit,
   gameInProgress,
   onUndo,
   onRedo,
   onHint,
   onAutoComplete,
   onResign,
+  onSplitTimeline,
+  onHelp,
   onNewGame,
   selectedMode,
   onSelectMode,
@@ -119,6 +125,16 @@ export default function Controls({
         </button>
       )}
 
+      {gameInProgress && canSplit && (
+        <button
+          className="p-1.5 rounded-md bg-[#b44dff]/20 text-[#b44dff] hover:bg-[#b44dff]/30 transition-colors"
+          onClick={onSplitTimeline}
+          title="Split Timeline"
+        >
+          <GitBranch className="w-4 h-4" />
+        </button>
+      )}
+
       {gameInProgress && (
         <button
           className="p-1.5 rounded-md bg-red-900/30 text-red-400/60 hover:bg-red-900/50 hover:text-red-400 transition-colors"
@@ -130,6 +146,14 @@ export default function Controls({
       )}
 
       <div className="w-px h-5 bg-indigo-700/50" />
+
+      <button
+        className="p-1.5 rounded-md bg-indigo-900/50 text-indigo-400/60 hover:text-indigo-300 hover:bg-indigo-800/60 transition-colors"
+        onClick={onHelp}
+        title="How to Play"
+      >
+        <HelpCircle className="w-4 h-4" />
+      </button>
 
       <span className="text-[11px] text-indigo-400/60 font-mono">
         Moves: {moves}
