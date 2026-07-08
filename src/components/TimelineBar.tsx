@@ -40,11 +40,11 @@ export default function TimelineBar({ timelines, activeIndex, maxTimelines, onSw
 
       {timelines.length < maxTimelines && (
         <button
-          className="ml-1 p-2 rounded-md text-indigo-400/50 hover:text-[#00f0ff] hover:bg-white/[0.05] transition-all"
+          className="ml-1 p-2.5 rounded-md text-indigo-400/50 hover:text-[#00f0ff] hover:bg-white/[0.05] transition-all"
           onClick={onSplit}
           title="Split Timeline"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-5 h-5" />
         </button>
       )}
     </div>

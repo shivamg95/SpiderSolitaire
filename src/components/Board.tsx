@@ -15,6 +15,8 @@ import PostGameReview from './PostGameReview'
 import HowToPlay from './HowToPlay'
 import { getValidRunFrom, findAllValidMoves, canAutoComplete } from '../engine/rules'
 import { getRankName, SUIT_SYMBOLS } from '../types'
+import { useCardDimensions } from '../hooks/useCardDimensions'
+import { TABLEAU_COLUMNS, COLUMN_GAP, CONTAINER_PADDING_X } from '../constants'
 import type { GameMode, Card as CardType, Move, GameSnapshot, MoveRecord, GameStatus } from '../types'
 
 const MAX_TIMELINES = 3
@@ -91,6 +93,7 @@ export default function Board() {
 
   const prevFoundations = useRef(foundations)
   const prevGameStatus = useRef(gameStatus)
+  const dims = useCardDimensions()
   const [clearParticles, setClearParticles] = useState<{ id: number; x: number; y: number }[]>([])
 
   useEffect(() => {
@@ -424,38 +427,51 @@ export default function Board() {
       <Starfield />
 
       <div className="relative z-10 flex flex-col h-full">
-        <header className="flex items-center justify-between px-3 py-2 bg-black/30 backdrop-blur-sm border-b border-indigo-800/20">
-          <div className="flex items-center gap-4">
-            <StockPile
-              stockCount={stock.length}
-              canDeal={stock.length >= 10 && gameStatus === 'playing'}
-              onDeal={handleDeal}
-            />
-            {showBoard && (
-              <Foundation completed={foundations} />
-            )}
+        <header className="flex flex-col md:flex-row md:items-center gap-2 px-3 py-2 bg-black/30 backdrop-blur-sm border-b border-indigo-800/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <StockPile
+                stockCount={stock.length}
+                canDeal={stock.length >= 10 && gameStatus === 'playing'}
+                onDeal={handleDeal}
+                cardWidth={dims.cardWidth}
+              />
+              {showBoard && (
+                <Foundation completed={foundations} />
+              )}
+            </div>
+            <div className="md:hidden text-[11px] text-indigo-400/60 font-mono">
+              {gameStatus === 'won' && (
+                <span className="text-[#ffd700] font-bold">Victory!</span>
+              )}
+              {gameStatus === 'lost' && (
+                <span className="text-red-400 font-bold">Game Over</span>
+              )}
+            </div>
           </div>
 
-          <Controls
-            moves={moves}
-            hasUndo={hasUndo()}
-            hasRedo={hasRedo()}
-            canAutoComplete={isAutoCompletable}
-            canSplit={gameStatus === 'playing' && timelines.length < MAX_TIMELINES}
-            gameInProgress={gameStatus === 'playing'}
-            onUndo={undo}
-            onRedo={redo}
-            onHint={handleHint}
-            onAutoComplete={handleAutoComplete}
-            onResign={handleResign}
-            onSplitTimeline={handleSplitTimeline}
-            onHelp={() => setShowHelp(true)}
-            onNewGame={handleNewGame}
-            selectedMode={selectedMode}
-            onSelectMode={setSelectedMode}
-          />
+          <div className="flex items-center justify-center flex-1">
+            <Controls
+              moves={moves}
+              hasUndo={hasUndo()}
+              hasRedo={hasRedo()}
+              canAutoComplete={isAutoCompletable}
+              canSplit={gameStatus === 'playing' && timelines.length < MAX_TIMELINES}
+              gameInProgress={gameStatus === 'playing'}
+              onUndo={undo}
+              onRedo={redo}
+              onHint={handleHint}
+              onAutoComplete={handleAutoComplete}
+              onResign={handleResign}
+              onSplitTimeline={handleSplitTimeline}
+              onHelp={() => setShowHelp(true)}
+              onNewGame={handleNewGame}
+              selectedMode={selectedMode}
+              onSelectMode={setSelectedMode}
+            />
+          </div>
 
-          <div className="text-[11px] text-indigo-400/60 font-mono min-w-[60px] text-right">
+          <div className="hidden md:block text-[11px] text-indigo-400/60 font-mono min-w-[60px] text-right">
             {gameStatus === 'won' && (
               <span className="text-[#ffd700] font-bold">Victory!</span>
             )}
@@ -507,7 +523,10 @@ export default function Board() {
           ) : (
             <LayoutGroup>
               <div className="flex-1 flex min-h-0 overflow-x-auto" style={{ touchAction: 'pan-y' }}>
-                <div className="flex gap-1.5 min-w-full px-1">
+                <div
+                  className="flex gap-1.5 px-1"
+                  style={{ minWidth: Math.max(window.innerWidth, TABLEAU_COLUMNS * dims.cardWidth + (TABLEAU_COLUMNS - 1) * COLUMN_GAP + CONTAINER_PADDING_X) }}
+                >
                   {columns.map((col, idx) => {
                     const isHintSource = currentHint?.fromColumn === idx
                     const isHintTarget = currentHint?.toColumn === idx
@@ -558,10 +577,10 @@ export default function Board() {
             <motion.div
               className="fixed pointer-events-none z-50 rounded-md overflow-hidden"
               style={{
-                width: 64,
+                width: dims.cardWidth,
                 aspectRatio: '5 / 7',
-                left: drag.currentX - 32,
-                top: drag.currentY - 45,
+                left: drag.currentX - dims.halfWidth,
+                top: drag.currentY - dims.halfHeight,
                 background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
                 boxShadow: '0 8px 32px rgba(0,240,255,0.4), 0 0 20px rgba(180,77,255,0.3)',
               }}

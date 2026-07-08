@@ -1,34 +1,8 @@
-import { useState, useEffect } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import type { Card as CardType } from '../types'
 import Card from './Card'
 import { getValidRunFrom } from '../engine/rules'
-
-const CARD_WIDTH = 64
-
-const DESKTOP_FACE_DOWN = 8
-const DESKTOP_FACE_UP = 22
-const TOUCH_FACE_DOWN = 24
-const TOUCH_FACE_UP = 36
-
-export function useCardSpacing() {
-  const [isCoarse, setIsCoarse] = useState(false)
-
-  useEffect(() => {
-    const mql = matchMedia('(pointer: coarse)')
-    setIsCoarse(mql.matches)
-    const handler = (e: MediaQueryListEvent) => setIsCoarse(e.matches)
-    mql.addEventListener('change', handler)
-    return () => mql.removeEventListener('change', handler)
-  }, [])
-
-  return {
-    faceDownOffset: isCoarse ? TOUCH_FACE_DOWN : DESKTOP_FACE_DOWN,
-    faceUpOffset: isCoarse ? TOUCH_FACE_UP : DESKTOP_FACE_UP,
-    cardWidth: CARD_WIDTH,
-    cardHeight: CARD_WIDTH * (7 / 5),
-  }
-}
+import { useCardDimensions } from '../hooks/useCardDimensions'
 
 export function getCardOffset(
   cards: CardType[],
@@ -84,9 +58,9 @@ export default function Column({
   onCardPointerDown,
   onColumnClick,
 }: ColumnProps) {
-  const spacing = useCardSpacing()
+  const dims = useCardDimensions()
   const isEmpty = cards.length === 0
-  const height = getColumnHeight(cards, spacing.faceDownOffset, spacing.faceUpOffset, spacing.cardHeight)
+  const height = getColumnHeight(cards, dims.faceDownOffset, dims.faceUpOffset, dims.cardHeight)
 
   const runSize = selectedCardIndex != null
     ? getValidRunFrom(cards, selectedCardIndex)
@@ -121,7 +95,7 @@ export default function Column({
         <div className="relative w-full" style={{ minHeight: height }}>
           <AnimatePresence mode="sync">
             {cards.map((card, index) => {
-              const offset = getCardOffset(cards, index, spacing.faceDownOffset, spacing.faceUpOffset)
+              const offset = getCardOffset(cards, index, dims.faceDownOffset, dims.faceUpOffset)
               const isCardSelected =
                 selectedCardIndex != null &&
                 index >= selectedCardIndex &&
@@ -131,6 +105,7 @@ export default function Column({
                 <Card
                   key={card.id}
                   card={card}
+                  cardWidth={dims.cardWidth}
                   offset={offset}
                   zIndex={index}
                   isSelected={isCardSelected}
@@ -139,7 +114,7 @@ export default function Column({
               )
             })}
           </AnimatePresence>
-          </div>
+        </div>
       )}
     </div>
   )

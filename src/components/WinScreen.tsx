@@ -69,8 +69,8 @@ export default function WinScreen({ visible, gameMode, moves, timeMs, onNewGame,
             <div className="flex gap-3">
               <button
                 className="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-lg
-                           bg-[#00f0ff]/20 border border-[#00f0ff]/40 text-[#00f0ff] font-medium
-                           hover:bg-[#00f0ff]/30 transition-all text-sm"
+                           bg-[#00f0ff]/20 border border-[#00f0ff]/40                            text-[#00f0ff] font-medium
+                           hover:bg-[#00f0ff]/30 transition-all text-base"
                 onClick={onNewGame}
               >
                 <RotateCcw className="w-4 h-4" />
@@ -78,8 +78,8 @@ export default function WinScreen({ visible, gameMode, moves, timeMs, onNewGame,
               </button>
               <button
                 className="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-lg
-                           bg-white/5 border border-indigo-700/40 text-indigo-300 font-medium
-                           hover:bg-white/10 transition-all text-sm"
+                           bg-white/5 border border-indigo-700/40                            text-indigo-300 font-medium
+                           hover:bg-white/10 transition-all text-base"
                 onClick={onViewStats}
               >
                 <BarChart3 className="w-4 h-4" />

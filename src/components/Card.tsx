@@ -3,10 +3,9 @@ import { useState, useEffect } from 'react'
 import type { Card as CardType } from '../types'
 import { getRankName, SUIT_SYMBOLS } from '../types'
 
-const CARD_WIDTH = 64
-
 interface CardProps {
   card: CardType
+  cardWidth: number
   onClick?: () => void
   onPointerDown?: (e: React.PointerEvent) => void
   isSelected?: boolean
@@ -14,10 +13,18 @@ interface CardProps {
   offset?: number
 }
 
-export default function Card({ card, onClick, onPointerDown, isSelected, zIndex = 0, offset = 0 }: CardProps) {
+function fontSize(base: number, width: number, min: number, max: number): number {
+  return Math.round(Math.max(min, Math.min(max, width * base)))
+}
+
+export default function Card({ card, cardWidth, onClick, onPointerDown, isSelected, zIndex = 0, offset = 0 }: CardProps) {
   const isBlack = card.suit === 'spades' || card.suit === 'clubs'
   const suitColor = isBlack ? 'text-gray-900' : 'text-red-500'
   const [justFlipped, setJustFlipped] = useState(false)
+
+  const cornerSize = fontSize(0.15, cardWidth, 8, 16)
+  const centerSize = fontSize(0.28, cardWidth, 16, 36)
+  const hoverLift = Math.round(cardWidth * 0.03)
 
   useEffect(() => {
     if (card.faceUp) {
@@ -55,7 +62,7 @@ export default function Card({ card, onClick, onPointerDown, isSelected, zIndex 
         }
       `}
       style={{
-        width: CARD_WIDTH,
+        width: cardWidth,
         left: '50%',
         x: '-50%',
         top: 0,
@@ -72,7 +79,7 @@ export default function Card({ card, onClick, onPointerDown, isSelected, zIndex 
         e.stopPropagation()
         if (card.faceUp) onPointerDown?.(e)
       }}
-      whileHover={card.faceUp ? { scale: 1.03, y: offset - 2 } : undefined}
+      whileHover={card.faceUp ? { scale: 1.03, y: offset - hoverLift } : undefined}
       whileTap={card.faceUp ? { scale: 0.95, boxShadow: '0 0 16px rgba(0,240,255,0.5)' } : undefined}
     >
       {!card.faceUp ? (
@@ -125,23 +132,23 @@ export default function Card({ card, onClick, onPointerDown, isSelected, zIndex 
             }}
           />
           <div className="absolute top-0.5 left-1 flex flex-col items-center leading-none pointer-events-none">
-            <span className={`text-[10px] font-bold ${suitColor}`}>
+            <span className={`font-bold ${suitColor}`} style={{ fontSize: cornerSize }}>
               {getRankName(card.rank)}
             </span>
-            <span className={`text-[10px] ${suitColor}`}>
+            <span className={suitColor} style={{ fontSize: cornerSize }}>
               {SUIT_SYMBOLS[card.suit]}
             </span>
           </div>
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <span className={`text-xl ${suitColor}`}>
+            <span className={suitColor} style={{ fontSize: centerSize }}>
               {SUIT_SYMBOLS[card.suit]}
             </span>
           </div>
           <div className="absolute bottom-0.5 right-1 flex flex-col items-center leading-none pointer-events-none [transform:rotate(180deg)]">
-            <span className={`text-[10px] font-bold ${suitColor}`}>
+            <span className={`font-bold ${suitColor}`} style={{ fontSize: cornerSize }}>
               {getRankName(card.rank)}
             </span>
-            <span className={`text-[10px] ${suitColor}`}>
+            <span className={suitColor} style={{ fontSize: cornerSize }}>
               {SUIT_SYMBOLS[card.suit]}
             </span>
           </div>

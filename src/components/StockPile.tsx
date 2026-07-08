@@ -4,9 +4,10 @@ interface StockPileProps {
   stockCount: number
   canDeal: boolean
   onDeal: () => void
+  cardWidth: number
 }
 
-export default function StockPile({ stockCount, canDeal, onDeal }: StockPileProps) {
+export default function StockPile({ stockCount, canDeal, onDeal, cardWidth }: StockPileProps) {
   const remainingDeals = Math.floor(stockCount / 10)
   const isEmpty = stockCount === 0
 
@@ -14,7 +15,7 @@ export default function StockPile({ stockCount, canDeal, onDeal }: StockPileProp
     <div className="flex flex-col items-center gap-2">
       <button
         className={`
-          relative w-14 rounded-md cursor-pointer transition-all duration-200
+          relative rounded-md cursor-pointer transition-all duration-200
           ${isEmpty
             ? 'opacity-20 pointer-events-none'
             : canDeal
@@ -22,7 +23,7 @@ export default function StockPile({ stockCount, canDeal, onDeal }: StockPileProp
               : 'opacity-40 pointer-events-none cursor-not-allowed'
           }
         `}
-        style={{ aspectRatio: '5 / 7' }}
+        style={{ width: cardWidth, aspectRatio: '5 / 7' }}
         onClick={onDeal}
         disabled={!canDeal || isEmpty}
       >
@@ -34,8 +35,8 @@ export default function StockPile({ stockCount, canDeal, onDeal }: StockPileProp
                 className="absolute rounded-md"
                 style={{
                   inset: 0,
-                  top: `${i * 2}px`,
-                  left: `${i * 2}px`,
+                  top: `${i * Math.round(cardWidth * 0.03)}px`,
+                  left: `${i * Math.round(cardWidth * 0.03)}px`,
                   background: 'linear-gradient(135deg, #1a1050 0%, #1e1660 50%, #162040 100%)',
                   border: '1px solid rgba(99, 102, 241, 0.4)',
                 }}
