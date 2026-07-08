@@ -42,11 +42,10 @@ export function getPointerColumnIndex(x: number): number | null {
 interface ColumnProps {
   cards: CardType[]
   columnIndex: number
-  selectedCardIndex?: number | null
   isDragTarget?: boolean
   isHintTarget?: boolean
+  isHintSource?: boolean
   onCardPointerDown?: (cardIndex: number, e: React.PointerEvent) => void
-  onColumnClick?: () => void
 }
 
 export default function Column({
@@ -54,17 +53,12 @@ export default function Column({
   columnIndex,
   isDragTarget,
   isHintTarget,
-  selectedCardIndex,
+  isHintSource,
   onCardPointerDown,
-  onColumnClick,
 }: ColumnProps) {
   const dims = useCardDimensions()
   const isEmpty = cards.length === 0
   const height = getColumnHeight(cards, dims.faceDownOffset, dims.faceUpOffset, dims.cardHeight)
-
-  const runSize = selectedCardIndex != null
-    ? getValidRunFrom(cards, selectedCardIndex)
-    : 0
 
   return (
     <div
@@ -83,9 +77,12 @@ export default function Column({
           ? 'ring-2 ring-[#4dff88]/40 bg-[#4dff88]/3'
           : ''
         }
+        ${isHintSource
+          ? 'ring-2 ring-[#00f0ff]/50 bg-[#00f0ff]/5'
+          : ''
+        }
       `}
       style={{ minHeight: height, touchAction: 'none' }}
-      onClick={onColumnClick}
     >
       {isEmpty ? (
         <div className="text-indigo-600/30 text-xs font-medium pointer-events-none select-none">
@@ -96,10 +93,6 @@ export default function Column({
           <AnimatePresence mode="sync">
             {cards.map((card, index) => {
               const offset = getCardOffset(cards, index, dims.faceDownOffset, dims.faceUpOffset)
-              const isCardSelected =
-                selectedCardIndex != null &&
-                index >= selectedCardIndex &&
-                index < selectedCardIndex + runSize
               const isBlocked = card.faceUp && getValidRunFrom(cards, index) < (cards.length - index)
 
               return (
@@ -109,7 +102,6 @@ export default function Column({
                   cardWidth={dims.cardWidth}
                   offset={offset}
                   zIndex={index}
-                  isSelected={isCardSelected}
                   isBlocked={isBlocked}
                   onPointerDown={(e) => onCardPointerDown?.(index, e)}
                 />

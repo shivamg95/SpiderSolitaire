@@ -150,7 +150,75 @@ export function findAllValidMoves(columns: Card[][]): Move[] {
     }
   }
 
+  // Sort: same-suit first, then by target rank descending
+  moves.sort((a, b) => {
+    if (a.fromColumn === 'stock' || b.fromColumn === 'stock') return 0
+    const colA = columns[a.fromColumn]
+    const colB = columns[b.fromColumn]
+    const cardA = colA[colA.length - a.cardCount]
+    const cardB = colB[colB.length - b.cardCount]
+    const targetA = columns[a.toColumn]
+    const targetB = columns[b.toColumn]
+    const suitA = targetA.length > 0 && targetA[targetA.length - 1].suit === cardA.suit
+    const suitB = targetB.length > 0 && targetB[targetB.length - 1].suit === cardB.suit
+    if (suitA !== suitB) return suitA ? -1 : 1
+    const rankA = targetA.length > 0 ? targetA[targetA.length - 1].rank : 0
+    const rankB = targetB.length > 0 ? targetB[targetB.length - 1].rank : 0
+    return rankB - rankA
+  })
+
   return moves
+}
+
+export function findBestTarget(
+  columns: Card[][],
+  fromCol: number,
+  cardIndex: number
+): Move | null {
+  const sourceCol = columns[fromCol]
+  const runSize = getValidRunFrom(sourceCol, cardIndex)
+  if (runSize === 0 || runSize !== sourceCol.length - cardIndex) return null
+
+  const movingCard = sourceCol[cardIndex]
+  const hasFaceDownAbove = sourceCol.slice(0, cardIndex).some(c => !c.faceUp)
+
+  let bestScore = -Infinity
+  let bestMove: Move | null = null
+
+  for (let to = 0; to < TABLEAU_COLUMNS; to++) {
+    if (to === fromCol) continue
+    const targetCol = columns[to]
+
+    if (targetCol.length === 0) {
+      const score = 0
+      if (score > bestScore) {
+        bestScore = score
+        bestMove = { fromColumn: fromCol, toColumn: to, cardCount: runSize }
+      }
+      continue
+    }
+
+    const targetCard = targetCol[targetCol.length - 1]
+    if (!isValidDrop(movingCard, targetCard)) continue
+
+    let score = 0
+    if (movingCard.suit === targetCard.suit) {
+      score += 20 // same-suit always wins
+    } else {
+      score -= 5 // cross-suit penalty
+    }
+
+    score += targetCard.rank * 0.2
+    score += getValidRunFrom(targetCol, targetCol.length - 1) * 0.5
+    if (hasFaceDownAbove) score += 3
+
+    if (score > bestScore) {
+      bestScore = score
+      bestMove = { fromColumn: fromCol, toColumn: to, cardCount: runSize }
+    }
+  }
+
+  return bestMove
 }
 
 export function canAutoComplete(columns: Card[][], stock: Card[]): boolean {

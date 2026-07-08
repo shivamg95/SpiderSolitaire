@@ -2,13 +2,13 @@ import { motion } from 'framer-motion'
 import { useState, useEffect } from 'react'
 import type { Card as CardType } from '../types'
 import { getRankName, SUIT_SYMBOLS } from '../types'
+import PipLayout from './PipLayout'
 
 interface CardProps {
   card: CardType
   cardWidth: number
   onClick?: () => void
   onPointerDown?: (e: React.PointerEvent) => void
-  isSelected?: boolean
   isBlocked?: boolean
   zIndex?: number
   offset?: number
@@ -18,7 +18,7 @@ function fontSize(base: number, width: number, min: number, max: number): number
   return Math.round(Math.max(min, Math.min(max, width * base)))
 }
 
-export default function Card({ card, cardWidth, onClick, onPointerDown, isSelected, isBlocked, zIndex = 0, offset = 0 }: CardProps) {
+export default function Card({ card, cardWidth, onClick, onPointerDown, isBlocked, zIndex = 0, offset = 0 }: CardProps) {
   const isBlack = card.suit === 'spades' || card.suit === 'clubs'
   const suitColor = isBlack ? 'text-gray-900' : 'text-red-500'
   const [justFlipped, setJustFlipped] = useState(false)
@@ -26,7 +26,6 @@ export default function Card({ card, cardWidth, onClick, onPointerDown, isSelect
   const w = cardWidth
 
   const cornerSize = fontSize(0.15, w, 9, 24)
-  const centerSize = fontSize(0.28, w, 16, 45)
   const hoverLift = Math.round(w * 0.03)
 
   const cornerTop = Math.round(w * 0.031)
@@ -35,9 +34,6 @@ export default function Card({ card, cardWidth, onClick, onPointerDown, isSelect
 
   const shadowY = Math.round(w * 0.031)
   const shadowBlur = Math.round(w * 0.125)
-  const shadowBlurLg = Math.round(w * 0.31)
-  const shadowOffsetLg = Math.round(w * 0.125)
-  const shadowSpreadLg = Math.round(w * 0.375)
   const tapBlur = Math.round(w * 0.25)
 
   const hatchInset = Math.round(w * 0.047)
@@ -54,7 +50,6 @@ export default function Card({ card, cardWidth, onClick, onPointerDown, isSelect
   }, [card.faceUp])
 
   const unselShadow = `0 ${shadowY}px ${shadowBlur}px rgba(0,0,0,0.35)`
-  const selShadow = `0 0 0 ${shadowY}px #00f0ff, 0 0 ${shadowBlurLg}px rgba(0,240,255,0.6), 0 ${shadowOffsetLg}px ${shadowSpreadLg}px rgba(0,0,0,0.5)`
   const tapShadow = `0 0 ${tapBlur}px rgba(0,240,255,0.5)`
 
   return (
@@ -64,10 +59,8 @@ export default function Card({ card, cardWidth, onClick, onPointerDown, isSelect
       initial={card.faceUp ? { opacity: 0, scale: 0.9 } : undefined}
       animate={{
         opacity: isBlocked ? 0.5 : 1,
-        scale: isSelected ? 1.05 : 1,
-        boxShadow: card.faceUp && !isBlocked
-          ? (isSelected ? selShadow : unselShadow)
-          : 'none',
+        scale: 1,
+        boxShadow: card.faceUp && !isBlocked ? unselShadow : 'none',
       }}
       exit={{ opacity: 0, scale: 0.85, transition: { duration: 0.12 } }}
       transition={{
@@ -81,7 +74,7 @@ export default function Card({ card, cardWidth, onClick, onPointerDown, isSelect
         x: '-50%',
         top: 0,
         y: offset,
-        zIndex: isSelected ? zIndex + 100 : zIndex,
+        zIndex,
         aspectRatio: '5 / 7',
         borderRadius,
         touchAction: 'none',
@@ -152,7 +145,7 @@ export default function Card({ card, cardWidth, onClick, onPointerDown, isSelect
             }}
           />
           <div
-            className="absolute flex flex-col items-center leading-none pointer-events-none"
+            className="absolute flex flex-col items-center leading-none pointer-events-none z-10"
             style={{ top: cornerTop, left: cornerSide }}
           >
             <span className={`font-bold ${suitColor}`} style={{ fontSize: cornerSize }}>
@@ -162,13 +155,9 @@ export default function Card({ card, cardWidth, onClick, onPointerDown, isSelect
               {SUIT_SYMBOLS[card.suit]}
             </span>
           </div>
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <span className={suitColor} style={{ fontSize: centerSize }}>
-              {SUIT_SYMBOLS[card.suit]}
-            </span>
-          </div>
+          <PipLayout rank={card.rank} suit={card.suit} cardWidth={w} isRed={!isBlack} />
           <div
-            className="absolute flex flex-col items-center leading-none pointer-events-none"
+            className="absolute flex flex-col items-center leading-none pointer-events-none z-10"
             style={{ bottom: cornerTop, right: cornerSide, transform: 'rotate(180deg)' }}
           >
             <span className={`font-bold ${suitColor}`} style={{ fontSize: cornerSize }}>

@@ -13,7 +13,7 @@ import WinScreen from './WinScreen'
 import StatsDashboard from './StatsDashboard'
 import PostGameReview from './PostGameReview'
 import HowToPlay from './HowToPlay'
-import { getValidRunFrom, findAllValidMoves, canAutoComplete } from '../engine/rules'
+import { getValidRunFrom, findAllValidMoves, canAutoComplete, findBestTarget } from '../engine/rules'
 import { getRankName, SUIT_SYMBOLS } from '../types'
 import { useCardDimensions } from '../hooks/useCardDimensions'
 import { TABLEAU_COLUMNS, COLUMN_GAP, CONTAINER_PADDING_X } from '../constants'
@@ -74,8 +74,6 @@ export default function Board() {
 
   const recordGame = useStatsStore(s => s.recordGame)
 
-  const [selectedColumn, setSelectedColumn] = useState<number | null>(null)
-  const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null)
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(gameMode || 'easy')
   const [drag, setDrag] = useState<DragState | null>(null)
   const [dragTargetColumn, setDragTargetColumn] = useState<number | null>(null)
@@ -99,13 +97,6 @@ export default function Board() {
   useEffect(() => {
     if (gameMode) setSelectedMode(gameMode)
   }, [gameMode])
-
-  useEffect(() => {
-    setSelectedColumn(null)
-    setSelectedCardIndex(null)
-    setHintMoves([])
-    setHintIndex(0)
-  }, [columns, stock])
 
   useEffect(() => {
     if (foundations > prevFoundations.current) {
@@ -298,33 +289,17 @@ export default function Board() {
     if (movedEnough) {
       if (targetCol !== null && targetCol !== drag.column) {
         moveCard(drag.column, targetCol, drag.runSize)
-        setSelectedColumn(null)
-        setSelectedCardIndex(null)
       }
     } else {
-      if (selectedColumn !== null && selectedColumn !== drag.column) {
-        const srcCol = columns[selectedColumn]
-        const startIndex = selectedCardIndex!
-        const runSize = getValidRunFrom(srcCol, startIndex)
-        moveCard(selectedColumn, drag.column, runSize)
-      } else if (selectedColumn === drag.column && selectedCardIndex === drag.cardIndex) {
-        setSelectedColumn(null)
-        setSelectedCardIndex(null)
-      } else {
-        setSelectedColumn(drag.column)
-        setSelectedCardIndex(drag.cardIndex)
+      const best = findBestTarget(columns, drag.column, drag.cardIndex)
+      if (best) {
+        moveCard(best.fromColumn as number, best.toColumn, best.cardCount)
       }
     }
 
-    try {
-      if (e.target instanceof Element) {
-        e.target.releasePointerCapture(e.pointerId)
-      }
-    } catch {}
-
     setDrag(null)
     setDragTargetColumn(null)
-  }, [drag, moveCard, selectedColumn, selectedCardIndex, columns])
+  }, [drag, moveCard, columns])
 
   useEffect(() => {
     if (drag) {
@@ -371,23 +346,7 @@ export default function Board() {
     [columns, gameStatus]
   )
 
-  const handleColumnClick = useCallback(
-    (colIndex: number) => {
-      if (gameStatus !== 'playing') return
-
-      if (selectedColumn !== null && selectedColumn !== colIndex) {
-        const srcCol = columns[selectedColumn]
-        const startIndex = selectedCardIndex!
-        const runSize = getValidRunFrom(srcCol, startIndex)
-        moveCard(selectedColumn, colIndex, runSize)
-      }
-    },
-    [selectedColumn, selectedCardIndex, columns, moveCard, gameStatus]
-  )
-
   const handleDeal = useCallback(() => {
-    setSelectedColumn(null)
-    setSelectedCardIndex(null)
     setHintMoves([])
     setHintIndex(0)
     dealStock()
@@ -405,9 +364,6 @@ export default function Board() {
     } else {
       setHintIndex(prev => (prev + 1) % allMoves.length)
     }
-
-    setSelectedColumn(null)
-    setSelectedCardIndex(null)
   }, [columns, gameStatus, hintMoves.length, hintIndex])
 
   const currentHint = hintMoves.length > 0 && hintIndex < hintMoves.length
@@ -540,11 +496,8 @@ export default function Board() {
                         columnIndex={idx}
                         isDragTarget={dragTargetColumn === idx}
                         isHintTarget={isHintTarget}
-                        selectedCardIndex={isHintSource
-                          ? col.length - (currentHint?.cardCount ?? 0)
-                          : selectedColumn === idx ? selectedCardIndex : null}
+                        isHintSource={isHintSource}
                         onCardPointerDown={(cardIndex, e) => handleCardPointerDown(idx, cardIndex, e)}
-                        onColumnClick={() => handleColumnClick(idx)}
                       />
                     )
                   })}
@@ -626,21 +579,6 @@ export default function Board() {
           })()}
         </AnimatePresence>
 
-        {/* Selection indicator */}
-        <AnimatePresence>
-          {selectedColumn !== null && !drag && (
-            <motion.div
-              className="absolute bottom-3 left-1/2 px-4 py-1.5 rounded-full
-                         bg-black/60 backdrop-blur-sm border border-[#00f0ff]/30 text-xs text-[#00f0ff]"
-              style={{ x: '-50%' }}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-            >
-              Selected column {selectedColumn + 1} — click destination or drag
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
 
       <WinScreen
