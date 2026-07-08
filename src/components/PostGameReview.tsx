@@ -50,7 +50,7 @@ export default function PostGameReview({ visible, moveHistory, onClose, onNewGam
 
           <motion.div
             className="relative bg-gradient-to-b from-[#0f1030] to-[#0a0a1a] border border-indigo-700/40
-                       rounded-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto
+                       rounded-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto momentum-scroll
                        shadow-[0_0_80px_rgba(0,240,255,0.08)]"
             initial={{ scale: 0.9, opacity: 0, y: 30 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -64,7 +64,7 @@ export default function PostGameReview({ visible, moveHistory, onClose, onNewGam
                   Nebula Insights
                 </h2>
                 <button
-                  className="p-1.5 rounded-md hover:bg-white/10 text-indigo-400 transition-colors"
+                  className="p-2 rounded-md hover:bg-white/10 text-indigo-400 transition-colors"
                   onClick={onClose}
                 >
                   <X className="w-5 h-5" />
@@ -122,9 +122,9 @@ export default function PostGameReview({ visible, moveHistory, onClose, onNewGam
                     {normalizedScores.map((_s, i) => (
                       <rect
                         key={i}
-                        x={i - 3}
+                        x={i - 9}
                         y={0}
-                        width={6}
+                        width={18}
                         height={100}
                         fill="transparent"
                         className="cursor-pointer hover:fill-white/5"
@@ -136,17 +136,23 @@ export default function PostGameReview({ visible, moveHistory, onClose, onNewGam
                     {analysis.moves.map((m, i) => {
                       const color = CLASSIFICATION_STYLES[m.classification || 'good'].color
                       return (
-                        <circle
-                          key={i}
-                          cx={i}
-                          cy={100 - normalizedScores[i]}
-                          r={selectedMoveIndex === i ? 4 : 3}
-                          fill={color}
-                          stroke={selectedMoveIndex === i ? 'white' : 'none'}
-                          strokeWidth="1.5"
-                          className="cursor-pointer"
-                          onClick={() => setSelectedMoveIndex(i)}
-                        />
+                        <g key={i} className="cursor-pointer" onClick={() => setSelectedMoveIndex(i)}>
+                          <circle
+                            cx={i}
+                            cy={100 - normalizedScores[i]}
+                            r={12}
+                            fill="transparent"
+                          />
+                          <circle
+                            cx={i}
+                            cy={100 - normalizedScores[i]}
+                            r={selectedMoveIndex === i ? 5 : 4}
+                            fill={color}
+                            stroke={selectedMoveIndex === i ? 'white' : 'none'}
+                            strokeWidth="1.5"
+                            style={{ pointerEvents: 'none' }}
+                          />
+                        </g>
                       )
                     })}
                   </svg>
@@ -249,7 +255,7 @@ export default function PostGameReview({ visible, moveHistory, onClose, onNewGam
               </AnimatePresence>
 
               {/* Move list */}
-              <div className="space-y-1 max-h-48 overflow-y-auto">
+              <div className="space-y-1 max-h-48 overflow-y-auto momentum-scroll">
                 {analysis.moves.map((m, i) => {
                   const style = m.classification ? CLASSIFICATION_STYLES[m.classification] : CLASSIFICATION_STYLES.good
                   const Icon = style.icon

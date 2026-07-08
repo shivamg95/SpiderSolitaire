@@ -313,6 +313,12 @@ export default function Board() {
       }
     }
 
+    try {
+      if (e.target instanceof Element) {
+        e.target.releasePointerCapture(e.pointerId)
+      }
+    } catch {}
+
     setDrag(null)
     setDragTargetColumn(null)
   }, [drag, moveCard, selectedColumn, selectedCardIndex, columns])
@@ -332,6 +338,8 @@ export default function Board() {
     (colIndex: number, cardIndex: number, e: React.PointerEvent) => {
       if (gameStatus !== 'playing') return
 
+      e.preventDefault()
+
       const srcCol = columns[colIndex]
       const runSize = getValidRunFrom(srcCol, cardIndex)
       if (runSize === 0) return
@@ -349,6 +357,11 @@ export default function Board() {
         currentY: e.clientY,
         card: srcCol[cardIndex],
       })
+
+      const target = e.currentTarget
+      if (target instanceof Element && target.setPointerCapture) {
+        target.setPointerCapture(e.pointerId)
+      }
     },
     [columns, gameStatus]
   )
@@ -493,7 +506,7 @@ export default function Board() {
             </div>
           ) : (
             <LayoutGroup>
-              <div className="flex-1 flex min-h-0 overflow-x-auto">
+              <div className="flex-1 flex min-h-0 overflow-x-auto" style={{ touchAction: 'pan-y' }}>
                 <div className="flex gap-1.5 min-w-full px-1">
                   {columns.map((col, idx) => {
                     const isHintSource = currentHint?.fromColumn === idx

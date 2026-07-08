@@ -195,7 +195,7 @@ export default function HowToPlay({ visible, onClose }: HowToPlayProps) {
                 </div>
               </div>
               <button
-                className="p-1.5 rounded-md hover:bg-white/10 text-indigo-400 transition-colors"
+                className="p-2 rounded-md hover:bg-white/10 text-indigo-400 transition-colors"
                 onClick={onClose}
               >
                 <X className="w-5 h-5" />
@@ -203,7 +203,7 @@ export default function HowToPlay({ visible, onClose }: HowToPlayProps) {
             </div>
 
             {/* Section tabs */}
-            <div className="px-4 py-2 border-b border-indigo-800/10 flex gap-1 overflow-x-auto">
+            <div className="px-4 py-2 border-b border-indigo-800/10 flex gap-1 overflow-x-auto momentum-scroll">
               {sections.map(s => {
                 const Icon = s.icon
                 const isActive = activeSection === s.id
@@ -226,7 +226,7 @@ export default function HowToPlay({ visible, onClose }: HowToPlayProps) {
             </div>
 
             {/* Content */}
-            <div className="px-6 py-4 overflow-y-auto flex-1">
+            <div className="px-6 py-4 overflow-y-auto flex-1 momentum-scroll">
               <motion.div
                 key={activeSection}
                 initial={{ opacity: 0, y: 8 }}

@@ -68,7 +68,7 @@ export default function WinScreen({ visible, gameMode, moves, timeMs, onNewGame,
 
             <div className="flex gap-3">
               <button
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg
+                className="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-lg
                            bg-[#00f0ff]/20 border border-[#00f0ff]/40 text-[#00f0ff] font-medium
                            hover:bg-[#00f0ff]/30 transition-all text-sm"
                 onClick={onNewGame}
@@ -77,7 +77,7 @@ export default function WinScreen({ visible, gameMode, moves, timeMs, onNewGame,
                 New Game
               </button>
               <button
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg
+                className="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-lg
                            bg-white/5 border border-indigo-700/40 text-indigo-300 font-medium
                            hover:bg-white/10 transition-all text-sm"
                 onClick={onViewStats}

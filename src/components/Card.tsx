@@ -62,6 +62,7 @@ export default function Card({ card, onClick, onPointerDown, isSelected, zIndex 
         y: offset,
         zIndex: isSelected ? zIndex + 100 : zIndex,
         aspectRatio: '5 / 7',
+        touchAction: 'none',
       }}
       onClick={(e) => {
         e.stopPropagation()
@@ -72,7 +73,7 @@ export default function Card({ card, onClick, onPointerDown, isSelected, zIndex 
         if (card.faceUp) onPointerDown?.(e)
       }}
       whileHover={card.faceUp ? { scale: 1.03, y: offset - 2 } : undefined}
-      whileTap={card.faceUp ? { scale: 0.97 } : undefined}
+      whileTap={card.faceUp ? { scale: 0.95, boxShadow: '0 0 16px rgba(0,240,255,0.5)' } : undefined}
     >
       {!card.faceUp ? (
         <>

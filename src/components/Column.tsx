@@ -1,35 +1,57 @@
+import { useState, useEffect } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import type { Card as CardType } from '../types'
 import Card from './Card'
 import { getValidRunFrom } from '../engine/rules'
 
-export const FACE_DOWN_OFFSET = 8
-export const FACE_UP_OFFSET = 22
 const CARD_WIDTH = 64
-const CARD_HEIGHT = CARD_WIDTH * (7 / 5)
 
-interface ColumnProps {
-  cards: CardType[]
-  columnIndex: number
-  selectedCardIndex?: number | null
-  isDragTarget?: boolean
-  isHintTarget?: boolean
-  onCardPointerDown?: (cardIndex: number, e: React.PointerEvent) => void
-  onColumnClick?: () => void
+const DESKTOP_FACE_DOWN = 8
+const DESKTOP_FACE_UP = 22
+const TOUCH_FACE_DOWN = 24
+const TOUCH_FACE_UP = 36
+
+export function useCardSpacing() {
+  const [isCoarse, setIsCoarse] = useState(false)
+
+  useEffect(() => {
+    const mql = matchMedia('(pointer: coarse)')
+    setIsCoarse(mql.matches)
+    const handler = (e: MediaQueryListEvent) => setIsCoarse(e.matches)
+    mql.addEventListener('change', handler)
+    return () => mql.removeEventListener('change', handler)
+  }, [])
+
+  return {
+    faceDownOffset: isCoarse ? TOUCH_FACE_DOWN : DESKTOP_FACE_DOWN,
+    faceUpOffset: isCoarse ? TOUCH_FACE_UP : DESKTOP_FACE_UP,
+    cardWidth: CARD_WIDTH,
+    cardHeight: CARD_WIDTH * (7 / 5),
+  }
 }
 
-export function getCardOffset(cards: CardType[], upToIndex: number): number {
+export function getCardOffset(
+  cards: CardType[],
+  upToIndex: number,
+  faceDownOffset: number,
+  faceUpOffset: number
+): number {
   let offset = 0
   for (let i = 0; i < upToIndex; i++) {
-    offset += cards[i].faceUp ? FACE_UP_OFFSET : FACE_DOWN_OFFSET
+    offset += cards[i].faceUp ? faceUpOffset : faceDownOffset
   }
   return offset
 }
 
-export function getColumnHeight(cards: CardType[]): number {
-  if (cards.length === 0) return CARD_HEIGHT + 4
-  const lastCardOffset = getCardOffset(cards, cards.length - 1)
-  return lastCardOffset + CARD_HEIGHT + 16
+export function getColumnHeight(
+  cards: CardType[],
+  faceDownOffset: number,
+  faceUpOffset: number,
+  cardHeight: number
+): number {
+  if (cards.length === 0) return cardHeight + 4
+  const lastCardOffset = getCardOffset(cards, cards.length - 1, faceDownOffset, faceUpOffset)
+  return lastCardOffset + cardHeight + 16
 }
 
 export function getPointerColumnIndex(x: number): number | null {
@@ -43,6 +65,16 @@ export function getPointerColumnIndex(x: number): number | null {
   return null
 }
 
+interface ColumnProps {
+  cards: CardType[]
+  columnIndex: number
+  selectedCardIndex?: number | null
+  isDragTarget?: boolean
+  isHintTarget?: boolean
+  onCardPointerDown?: (cardIndex: number, e: React.PointerEvent) => void
+  onColumnClick?: () => void
+}
+
 export default function Column({
   cards,
   columnIndex,
@@ -52,8 +84,9 @@ export default function Column({
   onCardPointerDown,
   onColumnClick,
 }: ColumnProps) {
+  const spacing = useCardSpacing()
   const isEmpty = cards.length === 0
-  const height = getColumnHeight(cards)
+  const height = getColumnHeight(cards, spacing.faceDownOffset, spacing.faceUpOffset, spacing.cardHeight)
 
   const runSize = selectedCardIndex != null
     ? getValidRunFrom(cards, selectedCardIndex)
@@ -77,7 +110,7 @@ export default function Column({
           : ''
         }
       `}
-      style={{ minHeight: height }}
+      style={{ minHeight: height, touchAction: 'none' }}
       onClick={onColumnClick}
     >
       {isEmpty ? (
@@ -88,7 +121,7 @@ export default function Column({
         <div className="relative w-full" style={{ minHeight: height }}>
           <AnimatePresence mode="sync">
             {cards.map((card, index) => {
-              const offset = getCardOffset(cards, index)
+              const offset = getCardOffset(cards, index, spacing.faceDownOffset, spacing.faceUpOffset)
               const isCardSelected =
                 selectedCardIndex != null &&
                 index >= selectedCardIndex &&

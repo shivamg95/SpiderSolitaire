@@ -22,7 +22,7 @@ export default function TimelineBar({ timelines, activeIndex, maxTimelines, onSw
         <button
           key={idx}
           className={`
-            relative px-3 py-1 text-[11px] font-medium rounded-t-md border border-b-0 transition-all
+            relative px-3 py-2 text-xs font-medium rounded-t-md border border-b-0 transition-all
             ${idx === activeIndex
               ? 'bg-white/[0.06] border-indigo-600/30 text-white'
               : 'bg-transparent border-transparent text-indigo-400/60 hover:text-indigo-300 hover:bg-white/[0.03]'
@@ -40,11 +40,11 @@ export default function TimelineBar({ timelines, activeIndex, maxTimelines, onSw
 
       {timelines.length < maxTimelines && (
         <button
-          className="ml-1 p-1 rounded-md text-indigo-400/50 hover:text-[#00f0ff] hover:bg-white/[0.05] transition-all"
+          className="ml-1 p-2 rounded-md text-indigo-400/50 hover:text-[#00f0ff] hover:bg-white/[0.05] transition-all"
           onClick={onSplit}
           title="Split Timeline"
         >
-          <Plus className="w-3.5 h-3.5" />
+          <Plus className="w-4 h-4" />
         </button>
       )}
     </div>

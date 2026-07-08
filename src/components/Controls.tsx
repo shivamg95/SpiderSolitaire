@@ -56,7 +56,7 @@ export default function Controls({
         {(Object.keys(MODE_LABELS) as GameMode[]).map((mode) => (
           <button
             key={mode}
-            className={`px-2.5 py-1 text-xs rounded-md transition-colors font-medium
+            className={`px-3 py-1.5 text-xs rounded-md transition-colors font-medium
               ${selectedMode === mode
                 ? `${MODE_COLORS[mode]} text-white shadow-[0_0_8px_rgba(0,240,255,0.15)]`
                 : 'bg-indigo-900/50 text-indigo-300 hover:bg-indigo-800/60'
@@ -76,7 +76,7 @@ export default function Controls({
       </div>
 
       <button
-        className={`px-3 py-1 text-xs rounded-md font-medium transition-all
+        className={`px-4 py-1.5 text-xs rounded-md font-medium transition-all
           ${selectedMode
             ? 'bg-[#00f0ff]/20 text-[#00f0ff] border border-[#00f0ff]/40 hover:bg-[#00f0ff]/30 shadow-[0_0_10px_rgba(0,240,255,0.15)]'
             : 'bg-indigo-900/50 text-indigo-300 hover:bg-indigo-800/60'
@@ -91,7 +91,7 @@ export default function Controls({
       <div className="w-px h-5 bg-indigo-700/50" />
 
       <button
-        className="p-1.5 rounded-md bg-indigo-900/50 text-indigo-300 hover:bg-indigo-800/60 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        className="p-2 rounded-md bg-indigo-900/50 text-indigo-300 hover:bg-indigo-800/60 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         onClick={onUndo}
         disabled={!hasUndo || !gameInProgress}
         title="Undo"
@@ -99,7 +99,7 @@ export default function Controls({
         <Undo2 className="w-4 h-4" />
       </button>
       <button
-        className="p-1.5 rounded-md bg-indigo-900/50 text-indigo-300 hover:bg-indigo-800/60 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        className="p-2 rounded-md bg-indigo-900/50 text-indigo-300 hover:bg-indigo-800/60 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         onClick={onRedo}
         disabled={!hasRedo || !gameInProgress}
         title="Redo"
@@ -107,7 +107,7 @@ export default function Controls({
         <Redo2 className="w-4 h-4" />
       </button>
       <button
-        className="p-1.5 rounded-md bg-indigo-900/50 text-indigo-300 hover:bg-indigo-800/60 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        className="p-2 rounded-md bg-indigo-900/50 text-indigo-300 hover:bg-indigo-800/60 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         onClick={onHint}
         disabled={!gameInProgress}
         title="Hint"
@@ -117,7 +117,7 @@ export default function Controls({
 
       {canAutoComplete && (
         <button
-          className="p-1.5 rounded-md bg-[#4dff88]/20 text-[#4dff88] hover:bg-[#4dff88]/30 transition-colors animate-pulse"
+          className="p-2 rounded-md bg-[#4dff88]/20 text-[#4dff88] hover:bg-[#4dff88]/30 transition-colors animate-pulse"
           onClick={onAutoComplete}
           title="Auto Complete!"
         >
@@ -127,7 +127,7 @@ export default function Controls({
 
       {gameInProgress && canSplit && (
         <button
-          className="p-1.5 rounded-md bg-[#b44dff]/20 text-[#b44dff] hover:bg-[#b44dff]/30 transition-colors"
+          className="p-2 rounded-md bg-[#b44dff]/20 text-[#b44dff] hover:bg-[#b44dff]/30 transition-colors"
           onClick={onSplitTimeline}
           title="Split Timeline"
         >
@@ -137,7 +137,7 @@ export default function Controls({
 
       {gameInProgress && (
         <button
-          className="p-1.5 rounded-md bg-red-900/30 text-red-400/60 hover:bg-red-900/50 hover:text-red-400 transition-colors"
+          className="p-2 rounded-md bg-red-900/30 text-red-400/60 hover:bg-red-900/50 hover:text-red-400 transition-colors"
           onClick={onResign}
           title="Resign"
         >
@@ -148,7 +148,7 @@ export default function Controls({
       <div className="w-px h-5 bg-indigo-700/50" />
 
       <button
-        className="p-1.5 rounded-md bg-indigo-900/50 text-indigo-400/60 hover:text-indigo-300 hover:bg-indigo-800/60 transition-colors"
+        className="p-2 rounded-md bg-indigo-900/50 text-indigo-400/60 hover:text-indigo-300 hover:bg-indigo-800/60 transition-colors"
         onClick={onHelp}
         title="How to Play"
       >

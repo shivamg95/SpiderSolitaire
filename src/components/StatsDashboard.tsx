@@ -43,7 +43,7 @@ export default function StatsDashboard({ visible, onClose }: StatsDashboardProps
 
           <motion.div
             className="relative bg-gradient-to-b from-[#0f1030] to-[#0a0a1a] border border-indigo-700/40
-                       rounded-2xl p-6 max-w-lg w-full mx-4 max-h-[85vh] overflow-y-auto
+                       rounded-2xl p-6 max-w-lg w-full mx-4 max-h-[85vh] overflow-y-auto momentum-scroll
                        shadow-[0_0_60px_rgba(0,240,255,0.08)]"
             initial={{ scale: 0.9, opacity: 0, y: 30 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -56,7 +56,7 @@ export default function StatsDashboard({ visible, onClose }: StatsDashboardProps
                 Statistics
               </h2>
               <button
-                className="p-1.5 rounded-md hover:bg-white/10 text-indigo-400 transition-colors"
+                className="p-2 rounded-md hover:bg-white/10 text-indigo-400 transition-colors"
                 onClick={onClose}
               >
                 <X className="w-5 h-5" />
