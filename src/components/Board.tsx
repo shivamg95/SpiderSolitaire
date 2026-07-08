@@ -4,7 +4,7 @@ import { useGameStore } from '../store/gameStore'
 import { useStatsStore } from '../store/statsStore'
 import { HelpCircle } from 'lucide-react'
 import Starfield from './Starfield'
-import Column, { getPointerColumnIndex } from './Column'
+import Column, { getPointerColumnIndex, getCardOffset } from './Column'
 import StockPile from './StockPile'
 import Foundation from './Foundation'
 import Controls from './Controls'
@@ -83,6 +83,12 @@ export default function Board() {
   const [showHelp, setShowHelp] = useState(false)
   const [hintIndex, setHintIndex] = useState(0)
   const [hintMoves, setHintMoves] = useState<Move[]>([])
+  const [hintAnimId, setHintAnimId] = useState(0)
+  const [hintAnimData, setHintAnimData] = useState<{
+    sourceX: number; sourceY: number
+    targetX: number; targetY: number
+    card: CardType
+  } | null>(null)
   const [hasRecorded, setHasRecorded] = useState(false)
 
   // Timeline state
@@ -91,6 +97,7 @@ export default function Board() {
 
   const prevFoundations = useRef(foundations)
   const prevGameStatus = useRef(gameStatus)
+  const hintTimeoutRef = useRef<number>(0)
   const dims = useCardDimensions()
   const [clearParticles, setClearParticles] = useState<{ id: number; x: number; y: number }[]>([])
 
@@ -326,6 +333,7 @@ export default function Board() {
 
       setHintMoves([])
       setHintIndex(0)
+      setHintAnimData(null)
 
       setDrag({
         column: colIndex,
@@ -349,6 +357,7 @@ export default function Board() {
   const handleDeal = useCallback(() => {
     setHintMoves([])
     setHintIndex(0)
+    setHintAnimData(null)
     dealStock()
   }, [dealStock])
 
@@ -358,17 +367,48 @@ export default function Board() {
     const allMoves = findAllValidMoves(columns)
     if (allMoves.length === 0) return
 
+    let index: number
     if (hintMoves.length === 0 || hintIndex >= allMoves.length) {
       setHintMoves(allMoves)
       setHintIndex(0)
+      index = 0
     } else {
-      setHintIndex(prev => (prev + 1) % allMoves.length)
+      const next = (hintIndex + 1) % allMoves.length
+      setHintIndex(next)
+      index = next
     }
-  }, [columns, gameStatus, hintMoves.length, hintIndex])
 
-  const currentHint = hintMoves.length > 0 && hintIndex < hintMoves.length
-    ? hintMoves[hintIndex]
-    : null
+    const move = allMoves[index]
+    if (move.fromColumn === 'stock') return
+
+    const fromCol = columns[move.fromColumn]
+    const cardIndex = fromCol.length - move.cardCount
+    const card = fromCol[cardIndex]
+
+    const sourceEl = document.querySelector(`[data-column-index="${move.fromColumn}"]`)
+    const targetEl = document.querySelector(`[data-column-index="${move.toColumn}"]`)
+
+    if (!sourceEl || !targetEl) return
+
+    const sourceRect = sourceEl.getBoundingClientRect()
+    const targetRect = targetEl.getBoundingClientRect()
+    const cardOffset = getCardOffset(fromCol, cardIndex, dims.faceDownOffset, dims.faceUpOffset)
+
+    const id = Date.now()
+    setHintAnimData({
+      sourceX: sourceRect.left + sourceRect.width / 2 - dims.cardWidth / 2,
+      sourceY: sourceRect.top + cardOffset,
+      targetX: targetRect.left + targetRect.width / 2 - dims.cardWidth / 2,
+      targetY: targetRect.top + targetRect.height - dims.cardHeight - 12,
+      card,
+    })
+    setHintAnimId(id)
+
+    if (hintTimeoutRef.current) clearTimeout(hintTimeoutRef.current)
+    hintTimeoutRef.current = window.setTimeout(() => {
+      setHintAnimData(prev => prev && prev.card.id === card.id ? null : prev)
+    }, 800)
+  }, [columns, gameStatus, hintMoves.length, hintIndex, dims])
 
   const handleAutoComplete = useCallback(() => {
     if (gameStatus !== 'playing') return
@@ -485,22 +525,15 @@ export default function Board() {
                   className="flex gap-1.5 px-1"
                   style={{ minWidth: Math.max(window.innerWidth, TABLEAU_COLUMNS * dims.cardWidth + (TABLEAU_COLUMNS - 1) * COLUMN_GAP + CONTAINER_PADDING_X) }}
                 >
-                  {columns.map((col, idx) => {
-                    const isHintSource = currentHint?.fromColumn === idx
-                    const isHintTarget = currentHint?.toColumn === idx
-
-                    return (
-                      <Column
-                        key={`col-${idx}`}
-                        cards={col}
-                        columnIndex={idx}
-                        isDragTarget={dragTargetColumn === idx}
-                        isHintTarget={isHintTarget}
-                        isHintSource={isHintSource}
-                        onCardPointerDown={(cardIndex, e) => handleCardPointerDown(idx, cardIndex, e)}
-                      />
-                    )
-                  })}
+                  {columns.map((col, idx) => (
+                    <Column
+                      key={`col-${idx}`}
+                      cards={col}
+                      columnIndex={idx}
+                      isDragTarget={dragTargetColumn === idx}
+                      onCardPointerDown={(cardIndex, e) => handleCardPointerDown(idx, cardIndex, e)}
+                    />
+                  ))}
                 </div>
               </div>
             </LayoutGroup>
@@ -575,6 +608,58 @@ export default function Board() {
                 </span>
               </div>
             </motion.div>
+            )
+          })()}
+        </AnimatePresence>
+
+        {/* Flying hint ghost */}
+        <AnimatePresence>
+          {hintAnimData && (() => {
+            const hw = dims.cardWidth
+            const hCornerSize = Math.max(9, Math.min(24, Math.round(hw * 0.15)))
+            const hCenterSize = Math.max(16, Math.min(45, Math.round(hw * 0.28)))
+            const hCornerTop = Math.round(hw * 0.031)
+            const hCornerSide = Math.round(hw * 0.062)
+            const hRadius = Math.round(hw * 0.094)
+            const isRed = hintAnimData.card.suit === 'hearts' || hintAnimData.card.suit === 'diamonds'
+            const hSuitColor = isRed ? 'text-red-500' : 'text-gray-900'
+            const dx = hintAnimData.targetX - hintAnimData.sourceX
+            const dy = hintAnimData.targetY - hintAnimData.sourceY
+
+            return (
+              <motion.div
+                key={hintAnimId}
+                className="fixed pointer-events-none z-50 overflow-hidden"
+                style={{
+                  width: hw,
+                  aspectRatio: '5 / 7',
+                  left: hintAnimData.sourceX,
+                  top: hintAnimData.sourceY,
+                  borderRadius: hRadius,
+                  background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                  boxShadow: '0 0 18px rgba(0,240,255,0.7), 0 4px 16px rgba(0,0,0,0.4)',
+                }}
+                initial={{ opacity: 1, x: 0, y: 0 }}
+                animate={{ opacity: [1, 0.9, 0], x: dx, y: dy }}
+                transition={{ duration: 0.7, ease: 'easeInOut', times: [0, 0.6, 1] }}
+              >
+                <div
+                  className="absolute flex flex-col items-center leading-none"
+                  style={{ top: hCornerTop, left: hCornerSide }}
+                >
+                  <span className={`font-bold ${hSuitColor}`} style={{ fontSize: hCornerSize }}>
+                    {getRankName(hintAnimData.card.rank)}
+                  </span>
+                  <span className={hSuitColor} style={{ fontSize: hCornerSize }}>
+                    {SUIT_SYMBOLS[hintAnimData.card.suit]}
+                  </span>
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className={hSuitColor} style={{ fontSize: hCenterSize }}>
+                    {SUIT_SYMBOLS[hintAnimData.card.suit]}
+                  </span>
+                </div>
+              </motion.div>
             )
           })()}
         </AnimatePresence>

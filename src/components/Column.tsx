@@ -43,8 +43,6 @@ interface ColumnProps {
   cards: CardType[]
   columnIndex: number
   isDragTarget?: boolean
-  isHintTarget?: boolean
-  isHintSource?: boolean
   onCardPointerDown?: (cardIndex: number, e: React.PointerEvent) => void
 }
 
@@ -52,8 +50,6 @@ export default function Column({
   cards,
   columnIndex,
   isDragTarget,
-  isHintTarget,
-  isHintSource,
   onCardPointerDown,
 }: ColumnProps) {
   const dims = useCardDimensions()
@@ -71,14 +67,6 @@ export default function Column({
         }
         ${isDragTarget
           ? 'ring-2 ring-[#00f0ff]/60 bg-[#00f0ff]/5 shadow-[inset_0_0_30px_rgba(0,240,255,0.1)]'
-          : ''
-        }
-        ${isHintTarget
-          ? 'ring-2 ring-[#4dff88]/40 bg-[#4dff88]/3'
-          : ''
-        }
-        ${isHintSource
-          ? 'ring-2 ring-[#00f0ff]/50 bg-[#00f0ff]/5'
           : ''
         }
       `}
