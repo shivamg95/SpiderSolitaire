@@ -4,7 +4,7 @@ import { computeCardWidth, CARD_ASPECT_RATIO } from '../constants'
 const DESKTOP_DOWN_RATIO = 0.125
 const DESKTOP_UP_RATIO = 0.344
 const TOUCH_DOWN_RATIO = 0.375
-const TOUCH_UP_RATIO = 0.562
+const TOUCH_UP_RATIO = 0.45
 
 export function useCardDimensions() {
   const [viewportW, setViewportW] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024)

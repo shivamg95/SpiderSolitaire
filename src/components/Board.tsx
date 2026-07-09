@@ -445,7 +445,7 @@ export default function Board() {
                 cardWidth={dims.cardWidth}
               />
               {showBoard && (
-                <Foundation completedSuits={completedSuits} />
+                <Foundation completedSuits={completedSuits} cardWidth={dims.cardWidth} />
               )}
             </div>
             <div className="md:hidden text-[11px] text-indigo-300/80 font-mono">
@@ -455,12 +455,14 @@ export default function Board() {
               {gameStatus === 'lost' && (
                 <span className="text-red-400 font-bold">Game Over</span>
               )}
+              {gameStatus === 'playing' && (
+                <span>{moves} moves</span>
+              )}
             </div>
           </div>
 
           <div className="flex items-center justify-center flex-1">
             <Controls
-              moves={moves}
               hasUndo={hasUndo()}
               hasRedo={hasRedo()}
               canAutoComplete={isAutoCompletable}
@@ -479,12 +481,15 @@ export default function Board() {
             />
           </div>
 
-          <div className="hidden md:block text-[11px] text-indigo-300/80 font-mono min-w-[60px] text-right">
+          <div className="hidden md:flex items-center gap-3 text-[11px] text-indigo-300/80 font-mono min-w-[90px] text-right justify-end">
             {gameStatus === 'won' && (
               <span className="text-[#ffd700] font-bold">Victory!</span>
             )}
             {gameStatus === 'lost' && (
               <span className="text-red-400 font-bold">Game Over</span>
+            )}
+            {gameStatus === 'playing' && (
+              <span>{moves} moves</span>
             )}
           </div>
         </header>
@@ -495,7 +500,7 @@ export default function Board() {
           maxTimelines={MAX_TIMELINES}
           onSwitch={handleSwitchTimeline}
           onSplit={handleSplitTimeline}
-          visible={showBoard && timelines.length > 0}
+          visible={showBoard && timelines.length > 1}
         />
 
         <main className="flex-1 flex flex-col px-2 pt-2 pb-2 overflow-hidden relative">
@@ -551,7 +556,7 @@ export default function Board() {
               <div className="flex-1 flex min-h-0 overflow-auto" style={{ touchAction: 'pan-y' }}>
                 <div
                   className="flex gap-1.5 px-1"
-                  style={{ minWidth: Math.max(window.innerWidth, TABLEAU_COLUMNS * dims.cardWidth + (TABLEAU_COLUMNS - 1) * COLUMN_GAP + CONTAINER_PADDING_X) }}
+                   style={{ minWidth: TABLEAU_COLUMNS * dims.cardWidth + (TABLEAU_COLUMNS - 1) * COLUMN_GAP + CONTAINER_PADDING_X }}
                 >
                   {columns.map((col, idx) => (
                     <Column

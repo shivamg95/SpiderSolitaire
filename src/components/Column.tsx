@@ -23,9 +23,9 @@ export function getColumnHeight(
   faceUpOffset: number,
   cardHeight: number
 ): number {
-  if (cards.length === 0) return cardHeight + 4
+  if (cards.length === 0) return cardHeight + Math.round(cardHeight * 0.08)
   const lastCardOffset = getCardOffset(cards, cards.length - 1, faceDownOffset, faceUpOffset)
-  return lastCardOffset + cardHeight + 16
+  return lastCardOffset + cardHeight + Math.round(cardHeight * 0.15)
 }
 
 export function getPointerColumnIndex(x: number): number | null {

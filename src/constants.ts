@@ -2,7 +2,7 @@ export const MIN_CARD_WIDTH = 55
 export const MAX_CARD_WIDTH = 160
 export const CARD_ASPECT_RATIO = 5 / 7
 export const COLUMN_GAP = 6
-export const CONTAINER_PADDING_X = 8
+export const CONTAINER_PADDING_X = 24
 export const TABLEAU_COLUMNS = 10
 
 export function computeCardWidth(viewportW: number): number {
