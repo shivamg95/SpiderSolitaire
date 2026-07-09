@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cosmic-bg: #0a0a1a;
+  --color-cosmic-surface: #12122a;
+  --color-cosmic-border: #1e1e3a;
+  --color-neon-cyan: #00f0ff;
+  --color-neon-purple: #b44dff;
+  --color-neon-pink: #ff4da6;
+  --color-neon-green: #4dff88;
+  --color-card-back: #1a1a3e;
+  --color-accent-gold: #ffd700;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-serif: Georgia, 'Times New Roman', serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: linear-gradient(135deg, #050510 0%, #0a0a1a 40%, #0f1030 70%, #050510 100%);
+  min-height: 100dvh;
+  overflow: hidden;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#root {
+  width: 100%;
+  height: 100dvh;
+}
+
+button:focus-visible {
+  outline: 2px solid #00f0ff;
+  outline-offset: 2px;
+}
+
+.momentum-scroll {
+  -webkit-overflow-scrolling: touch;
+}
