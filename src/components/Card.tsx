@@ -10,6 +10,7 @@ interface CardProps {
   onClick?: () => void
   onPointerDown?: (e: React.PointerEvent) => void
   isBlocked?: boolean
+  isHinted?: boolean
   zIndex?: number
   offset?: number
 }
@@ -18,28 +19,25 @@ function fontSize(base: number, width: number, min: number, max: number): number
   return Math.round(Math.max(min, Math.min(max, width * base)))
 }
 
-export default function Card({ card, cardWidth, onClick, onPointerDown, isBlocked, zIndex = 0, offset = 0 }: CardProps) {
+export default function Card({ card, cardWidth, onClick, onPointerDown, isBlocked, isHinted, zIndex = 0, offset = 0 }: CardProps) {
   const isBlack = card.suit === 'spades' || card.suit === 'clubs'
   const suitColor = isBlack ? 'text-gray-900' : 'text-red-500'
   const [justFlipped, setJustFlipped] = useState(false)
 
   const w = cardWidth
 
-  const cornerSize = fontSize(0.20, w, 11, 32)
+  const cornerSize = fontSize(0.22, w, 12, 34)
   const hoverLift = Math.round(w * 0.06)
 
   const cornerTop = Math.round(w * 0.031)
   const cornerSide = Math.round(w * 0.062)
   const borderRadius = Math.round(w * 0.094)
 
-  const shadowY = Math.round(w * 0.031)
-  const shadowBlur = Math.round(w * 0.125)
+  const shadowY = Math.round(w * 0.03)
+  const shadowBlur = Math.round(w * 0.16)
   const tapBlur = Math.round(w * 0.25)
   const hoverGlow = Math.round(w * 0.12)
 
-  const hatchInset = Math.round(w * 0.047)
-  const hatchHalf = Math.round(w * 0.031)
-  const hatchCycle = Math.round(w * 0.062)
   const innerInset = Math.round(w * 0.062)
 
   useEffect(() => {
@@ -50,9 +48,9 @@ export default function Card({ card, cardWidth, onClick, onPointerDown, isBlocke
     }
   }, [card.faceUp])
 
-  const unselShadow = `0 ${shadowY}px ${shadowBlur}px rgba(0,0,0,0.35)`
-  const hoverShadow = `${unselShadow}, 0 0 ${hoverGlow}px rgba(0,240,255,0.25)`
-  const tapShadow = `0 0 ${tapBlur}px rgba(0,240,255,0.5)`
+  const unselShadow = `0 ${shadowY}px ${shadowBlur * 0.5}px rgba(0,0,0,0.15), 0 ${shadowY * 2}px ${shadowBlur}px rgba(0,0,0,0.12), 0 ${shadowY * 4}px ${shadowBlur * 1.5}px rgba(0,0,0,0.08)`
+  const hoverShadow = `${unselShadow}, 0 0 ${hoverGlow}px rgba(0,240,255,0.2)`
+  const tapShadow = `0 0 ${tapBlur}px rgba(0,240,255,0.35)`
 
   return (
     <div
@@ -81,10 +79,11 @@ export default function Card({ card, cardWidth, onClick, onPointerDown, isBlocke
         layoutId={card.id}
         initial={false}
         animate={{
-          opacity: isBlocked ? 0.5 : 1,
+          opacity: isBlocked ? 0.35 : 1,
           scale: 1,
           scaleX: justFlipped ? [0.3, 1] : 1,
           boxShadow: card.faceUp && !isBlocked ? unselShadow : 'none',
+          filter: isBlocked ? 'grayscale(0.6) brightness(0.75) contrast(0.9)' : 'none',
         }}
         exit={{ opacity: 0, scale: 0.85, transition: { duration: 0.12 } }}
         transition={{
@@ -103,38 +102,58 @@ export default function Card({ card, cardWidth, onClick, onPointerDown, isBlocke
         whileHover={card.faceUp && !isBlocked ? { scale: 1.04, y: -hoverLift, boxShadow: hoverShadow } : undefined}
         whileTap={card.faceUp && !isBlocked ? { scale: 0.92, boxShadow: tapShadow } : undefined}
       >
+        {isHinted && (
+          <motion.div
+            className="absolute inset-0 pointer-events-none z-20"
+            style={{ borderRadius }}
+            animate={{ boxShadow: [
+              '0 0 0 2px rgba(0,240,255,0.6), 0 0 12px rgba(0,240,255,0.4)',
+              '0 0 0 3px rgba(0,240,255,0.9), 0 0 20px rgba(0,240,255,0.6)',
+              '0 0 0 2px rgba(0,240,255,0.6), 0 0 12px rgba(0,240,255,0.4)',
+            ] }}
+            transition={{ duration: 0.8, repeat: Infinity, ease: 'easeInOut' }}
+          />
+        )}
         {!card.faceUp ? (
           <>
             <div
-              className="absolute inset-0 border border-indigo-800/50"
+              className="absolute inset-0 border border-indigo-700/40"
               style={{
                 borderRadius,
-                background: 'linear-gradient(135deg, #1a1050 0%, #1e1660 30%, #162040 60%, #1a1050 100%)',
+                background: 'linear-gradient(135deg, #161040 0%, #1a1858 40%, #161040 100%)',
               }}
             />
             <div
-              className="absolute opacity-50"
-              style={{
-                inset: hatchInset,
-                borderRadius: Math.round(w * 0.062),
-                background: `
-                  repeating-linear-gradient(45deg, transparent, transparent ${hatchHalf}px, rgba(0,240,255,0.08) ${hatchHalf}px, rgba(0,240,255,0.08) ${hatchCycle}px),
-                  repeating-linear-gradient(-45deg, transparent, transparent ${hatchHalf}px, rgba(180,77,255,0.06) ${hatchHalf}px, rgba(180,77,255,0.06) ${hatchCycle}px)
-                `,
-              }}
-            />
-            <div className="absolute inset-0 flex items-center justify-center">
+              className="absolute inset-0 flex items-center justify-center opacity-40"
+              style={{ borderRadius }}
+            >
               <div
-                className="w-2/3 h-2/3 rounded-full opacity-20"
-                style={{ background: 'radial-gradient(circle, rgba(0,240,255,0.4) 0%, transparent 70%)' }}
+                style={{
+                  width: Math.round(w * 0.45),
+                  height: Math.round(w * 0.45),
+                  transform: 'rotate(45deg)',
+                  border: '1px solid rgba(0,240,255,0.25)',
+                  borderRadius: Math.round(w * 0.02),
+                  background: 'linear-gradient(135deg, rgba(0,240,255,0.08) 0%, rgba(180,77,255,0.05) 100%)',
+                  boxShadow: '0 0 12px rgba(0,240,255,0.1)',
+                }}
               />
             </div>
             <div
-              className="absolute border border-indigo-600/30"
+              className="absolute inset-0 opacity-20"
+              style={{
+                borderRadius,
+                background: `
+                  radial-gradient(circle at 30% 30%, rgba(0,240,255,0.15) 0%, transparent 40%),
+                  radial-gradient(circle at 70% 70%, rgba(180,77,255,0.12) 0%, transparent 40%)
+                `,
+              }}
+            />
+            <div
+              className="absolute border border-indigo-500/25"
               style={{
                 inset: innerInset,
                 borderRadius: Math.round(w * 0.062),
-                background: 'linear-gradient(135deg, rgba(180,77,255,0.15) 0%, rgba(0,240,255,0.08) 50%, rgba(180,77,255,0.15) 100%)',
               }}
             />
           </>

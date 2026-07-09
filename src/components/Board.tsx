@@ -8,6 +8,7 @@ import Column, { getPointerColumnIndex, getCardOffset } from './Column'
 import StockPile from './StockPile'
 import Foundation from './Foundation'
 import Controls from './Controls'
+import ScorePanel from './ScorePanel'
 import TimelineBar from './TimelineBar'
 import WinScreen from './WinScreen'
 import StatsDashboard from './StatsDashboard'
@@ -16,7 +17,7 @@ import HowToPlay from './HowToPlay'
 import { getValidRunFrom, findAllValidMoves, canAutoComplete, findBestTarget } from '../engine/rules'
 import { getRankName, SUIT_SYMBOLS } from '../types'
 import { useCardDimensions } from '../hooks/useCardDimensions'
-import { TABLEAU_COLUMNS, COLUMN_GAP, CONTAINER_PADDING_X } from '../constants'
+import { TABLEAU_COLUMNS, CONTAINER_PADDING_X } from '../constants'
 import type { GameMode, Card as CardType, Move, GameSnapshot, MoveRecord, GameStatus, Suit } from '../types'
 
 const MAX_TIMELINES = 3
@@ -91,7 +92,9 @@ export default function Board() {
     targetX: number; targetY: number
     card: CardType
   } | null>(null)
+  const [hintSourceCard, setHintSourceCard] = useState<string | null>(null)
   const [hasRecorded, setHasRecorded] = useState(false)
+  const [elapsedDisplay, setElapsedDisplay] = useState(0)
 
   // Timeline state
   const [timelines, setTimelines] = useState<TimelineEntry[]>([])
@@ -108,12 +111,23 @@ export default function Board() {
   }, [gameMode])
 
   useEffect(() => {
+    if (gameStatus !== 'playing' || !startTime) {
+      setElapsedDisplay(startTime ? Date.now() - startTime : 0)
+      return
+    }
+    const id = setInterval(() => setElapsedDisplay(Date.now() - startTime), 1000)
+    return () => clearInterval(id)
+  }, [gameStatus, startTime])
+
+  useEffect(() => {
     if (foundations > prevFoundations.current) {
       const count = foundations - prevFoundations.current
-      const particles = Array.from({ length: count * 8 }, (_, i) => ({
+      const particles = Array.from({ length: count * 18 }, (_, i) => ({
         id: Date.now() + i,
         x: Math.random() * 60 + 20,
         y: Math.random() * 40 + 10,
+        size: 2 + Math.random() * 3,
+        color: ['#ffd700', '#00f0ff', '#b44dff', '#4dff88'][i % 4],
       }))
       setClearParticles(prev => [...prev, ...particles])
       setTimeout(() => {
@@ -243,6 +257,7 @@ export default function Board() {
     setHasRecorded(false)
     setHintMoves([])
     setHintIndex(0)
+    setHintSourceCard(null)
     setTimelines([])
     setActiveTimelineIndex(0)
     newGame(mode)
@@ -344,6 +359,7 @@ export default function Board() {
       setHintMoves([])
       setHintIndex(0)
       setHintAnimData(null)
+      setHintSourceCard(null)
 
       setDrag({
         column: colIndex,
@@ -368,6 +384,7 @@ export default function Board() {
     setHintMoves([])
     setHintIndex(0)
     setHintAnimData(null)
+    setHintSourceCard(null)
     dealStock()
   }, [dealStock])
 
@@ -413,11 +430,13 @@ export default function Board() {
       card,
     })
     setHintAnimId(id)
+    setHintSourceCard(card.id)
 
     if (hintTimeoutRef.current) clearTimeout(hintTimeoutRef.current)
     hintTimeoutRef.current = window.setTimeout(() => {
       setHintAnimData(prev => prev && prev.card.id === card.id ? null : prev)
-    }, 800)
+      setHintSourceCard(prev => prev === card.id ? null : prev)
+    }, 1500)
   }, [columns, gameStatus, hintMoves.length, hintIndex, dims])
 
   const handleAutoComplete = useCallback(() => {
@@ -430,14 +449,31 @@ export default function Board() {
   const elapsedMs = startTime ? Date.now() - startTime : 0
   const timelineNames = timelines.map((_, i) => ({ name: TIMELINE_NAMES[i] || `T${i + 1}` }))
 
+  const validDragTargets = new Set<number>()
+  if (drag) {
+    for (let i = 0; i < columns.length; i++) {
+      if (i === drag.column) continue
+      const targetCol = columns[i]
+      if (targetCol.length === 0) {
+        validDragTargets.add(i)
+      } else {
+        const topCard = targetCol[targetCol.length - 1]
+        if (drag.card.rank === topCard.rank - 1) {
+          validDragTargets.add(i)
+        }
+      }
+    }
+  }
+
   return (
     <div className="fixed inset-0 flex flex-col bg-transparent text-white">
       <Starfield />
 
       <div className="relative z-10 flex flex-col h-full">
-        <header className="flex flex-col md:flex-row md:items-center gap-2 px-3 py-2 bg-black/30 backdrop-blur-sm border-b border-indigo-800/20">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <header className="flex flex-col gap-2 px-4 py-2.5 bg-black/30 backdrop-blur-sm border-b border-indigo-800/20">
+          {/* Top row: stock, foundations, score */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
               <StockPile
                 stockCount={stock.length}
                 canDeal={stock.length >= 10 && gameStatus === 'playing'}
@@ -445,23 +481,30 @@ export default function Board() {
                 cardWidth={dims.cardWidth}
               />
               {showBoard && (
+                <div className="hidden sm:flex flex-col items-start gap-1">
+                  <span className="text-[10px] uppercase tracking-wider text-indigo-400/60 font-semibold">Completed</span>
+                  <Foundation completedSuits={completedSuits} cardWidth={dims.cardWidth} />
+                </div>
+              )}
+            </div>
+
+            <div className="flex-1 flex items-center justify-center sm:hidden">
+              {showBoard && (
                 <Foundation completedSuits={completedSuits} cardWidth={dims.cardWidth} />
               )}
             </div>
-            <div className="md:hidden text-[11px] text-indigo-300/80 font-mono">
-              {gameStatus === 'won' && (
-                <span className="text-[#ffd700] font-bold">Victory!</span>
-              )}
-              {gameStatus === 'lost' && (
-                <span className="text-red-400 font-bold">Game Over</span>
-              )}
-              {gameStatus === 'playing' && (
-                <span>{moves} moves</span>
-              )}
+
+            <div className="flex items-center gap-2">
+              <ScorePanel
+                moves={moves}
+                timeMs={elapsedDisplay}
+                gameStatus={gameStatus}
+              />
             </div>
           </div>
 
-          <div className="flex items-center justify-center flex-1">
+          {/* Bottom row: controls toolbar */}
+          <div className="flex items-center justify-center">
             <Controls
               hasUndo={hasUndo()}
               hasRedo={hasRedo()}
@@ -479,18 +522,6 @@ export default function Board() {
               selectedMode={selectedMode}
               onSelectMode={setSelectedMode}
             />
-          </div>
-
-          <div className="hidden md:flex items-center gap-3 text-[11px] text-indigo-300/80 font-mono min-w-[90px] text-right justify-end">
-            {gameStatus === 'won' && (
-              <span className="text-[#ffd700] font-bold">Victory!</span>
-            )}
-            {gameStatus === 'lost' && (
-              <span className="text-red-400 font-bold">Game Over</span>
-            )}
-            {gameStatus === 'playing' && (
-              <span>{moves} moves</span>
-            )}
           </div>
         </header>
 
@@ -553,10 +584,20 @@ export default function Board() {
             </div>
           ) : (
             <LayoutGroup>
-              <div className="flex-1 flex min-h-0 overflow-auto" style={{ touchAction: 'pan-y' }}>
+              <div
+                className="flex-1 flex min-h-0 overflow-auto rounded-xl"
+                style={{
+                  touchAction: 'pan-y',
+                  background: `
+                    radial-gradient(circle at 50% 50%, rgba(15,16,48,0.6) 0%, rgba(10,10,30,0.8) 100%),
+                    repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,240,255,0.015) 2px, rgba(0,240,255,0.015) 4px),
+                    repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(180,77,255,0.015) 2px, rgba(180,77,255,0.015) 4px)
+                  `,
+                }}
+              >
                 <div
-                  className="flex gap-1.5 px-1"
-                   style={{ minWidth: TABLEAU_COLUMNS * dims.cardWidth + (TABLEAU_COLUMNS - 1) * COLUMN_GAP + CONTAINER_PADDING_X }}
+                  className="flex px-2 py-2"
+                   style={{ gap: dims.columnGap, minWidth: TABLEAU_COLUMNS * dims.cardWidth + (TABLEAU_COLUMNS - 1) * dims.columnGap + CONTAINER_PADDING_X }}
                 >
                   {columns.map((col, idx) => (
                     <Column
@@ -564,6 +605,9 @@ export default function Board() {
                       cards={col}
                       columnIndex={idx}
                       isDragTarget={dragTargetColumn === idx}
+                      isSource={drag !== null && drag.column === idx}
+                      isValidDropTarget={drag !== null && validDragTargets.has(idx)}
+                      hintCardId={hintSourceCard}
                       onCardPointerDown={(cardIndex, e) => handleCardPointerDown(idx, cardIndex, e)}
                     />
                   ))}
@@ -577,14 +621,17 @@ export default function Board() {
             {clearParticles.map((p) => (
               <motion.div
                 key={p.id}
-                className="absolute w-1.5 h-1.5 rounded-full pointer-events-none z-50"
+                className="absolute rounded-full pointer-events-none z-50"
                 style={{
                   left: `${p.x}%`,
                   top: `${p.y}%`,
-                  background: `radial-gradient(circle, #ffd700, ${['#00f0ff', '#b44dff', '#4dff88'][p.id % 3]})`,
+                  width: `${p.size}px`,
+                  height: `${p.size}px`,
+                  background: p.color,
+                  boxShadow: `0 0 ${p.size * 2}px ${p.color}`,
                 }}
                 initial={{ scale: 0, opacity: 1 }}
-                animate={{ scale: 2, opacity: 0, y: -40 - Math.random() * 30, x: (Math.random() - 0.5) * 40 }}
+                animate={{ scale: 2, opacity: 0, y: -50 - Math.random() * 40, x: (Math.random() - 0.5) * 60 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 1.2 + Math.random() * 0.8, ease: 'easeOut' }}
               />
@@ -647,7 +694,7 @@ export default function Board() {
                 className="absolute inset-0 rounded-md"
                 style={{
                   background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
-                  boxShadow: `0 ${gShadowY}px ${gShadowBlur}px rgba(0,240,255,0.4), 0 0 ${gGlowBlur}px rgba(180,77,255,0.3)`,
+                  boxShadow: `0 ${gShadowY}px ${gShadowBlur}px rgba(0,0,0,0.4), 0 0 ${gGlowBlur}px rgba(0,240,255,0.12)`,
                 }}
               />
               <div

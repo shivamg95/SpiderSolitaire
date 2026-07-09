@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { computeCardWidth, CARD_ASPECT_RATIO } from '../constants'
+import { computeCardWidth, computeColumnGap, CARD_ASPECT_RATIO } from '../constants'
 
 const DESKTOP_DOWN_RATIO = 0.125
 const DESKTOP_UP_RATIO = 0.344
@@ -26,6 +26,7 @@ export function useCardDimensions() {
 
   const cardWidth = computeCardWidth(viewportW)
   const cardHeight = cardWidth * (1 / CARD_ASPECT_RATIO)
+  const columnGap = computeColumnGap(viewportW)
 
   const faceDownRatio = isCoarse ? TOUCH_DOWN_RATIO : DESKTOP_DOWN_RATIO
   const faceUpRatio = isCoarse ? TOUCH_UP_RATIO : DESKTOP_UP_RATIO
@@ -33,6 +34,7 @@ export function useCardDimensions() {
   return {
     cardWidth,
     cardHeight,
+    columnGap,
     faceDownOffset: Math.round(cardWidth * faceDownRatio),
     faceUpOffset: Math.round(cardWidth * faceUpRatio),
     halfWidth: Math.round(cardWidth / 2),

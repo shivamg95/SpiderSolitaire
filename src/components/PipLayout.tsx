@@ -1,5 +1,6 @@
 import type { Rank, Suit } from '../types'
 import { SUIT_SYMBOLS } from '../types'
+import FaceCardArt from './FaceCardArt'
 
 interface PipLayoutProps {
   rank: Rank
@@ -18,43 +19,43 @@ function aceSize(w: number): number {
 
 const PIP_POSITIONS: Record<number, { x: number; y: number; r: number }[]> = {
   2: [
-    { x: 50, y: 24, r: 0 }, { x: 50, y: 76, r: 180 },
+    { x: 50, y: 28, r: 0 }, { x: 50, y: 72, r: 180 },
   ],
   3: [
-    { x: 50, y: 24, r: 0 }, { x: 50, y: 50, r: 0 }, { x: 50, y: 76, r: 180 },
+    { x: 50, y: 28, r: 0 }, { x: 50, y: 50, r: 0 }, { x: 50, y: 72, r: 180 },
   ],
   4: [
-    { x: 26, y: 24, r: 0 }, { x: 74, y: 24, r: 0 },
-    { x: 26, y: 76, r: 180 }, { x: 74, y: 76, r: 180 },
+    { x: 28, y: 28, r: 0 }, { x: 72, y: 28, r: 0 },
+    { x: 28, y: 72, r: 180 }, { x: 72, y: 72, r: 180 },
   ],
   5: [
-    { x: 26, y: 24, r: 0 }, { x: 74, y: 24, r: 0 },
+    { x: 28, y: 28, r: 0 }, { x: 72, y: 28, r: 0 },
     { x: 50, y: 50, r: 0 },
-    { x: 26, y: 76, r: 180 }, { x: 74, y: 76, r: 180 },
+    { x: 28, y: 72, r: 180 }, { x: 72, y: 72, r: 180 },
   ],
   6: [
-    { x: 24, y: 22, r: 0 }, { x: 24, y: 50, r: 0 }, { x: 24, y: 78, r: 180 },
-    { x: 76, y: 22, r: 0 }, { x: 76, y: 50, r: 0 }, { x: 76, y: 78, r: 180 },
+    { x: 28, y: 25, r: 0 }, { x: 28, y: 50, r: 0 }, { x: 28, y: 75, r: 180 },
+    { x: 72, y: 25, r: 0 }, { x: 72, y: 50, r: 0 }, { x: 72, y: 75, r: 180 },
   ],
   7: [
-    { x: 24, y: 17, r: 0 }, { x: 24, y: 42, r: 0 }, { x: 24, y: 67, r: 180 },
-    { x: 76, y: 17, r: 0 }, { x: 76, y: 42, r: 0 }, { x: 76, y: 67, r: 180 },
-    { x: 50, y: 90, r: 180 },
+    { x: 28, y: 25, r: 0 }, { x: 28, y: 50, r: 0 }, { x: 28, y: 75, r: 180 },
+    { x: 72, y: 25, r: 0 }, { x: 72, y: 50, r: 0 }, { x: 72, y: 75, r: 180 },
+    { x: 50, y: 37, r: 0 },
   ],
   8: [
-    { x: 24, y: 17, r: 0 }, { x: 24, y: 42, r: 0 }, { x: 24, y: 67, r: 180 },
-    { x: 76, y: 17, r: 0 }, { x: 76, y: 42, r: 0 }, { x: 76, y: 67, r: 180 },
-    { x: 50, y: 29, r: 0 }, { x: 50, y: 71, r: 180 },
+    { x: 28, y: 25, r: 0 }, { x: 28, y: 50, r: 0 }, { x: 28, y: 75, r: 180 },
+    { x: 72, y: 25, r: 0 }, { x: 72, y: 50, r: 0 }, { x: 72, y: 75, r: 180 },
+    { x: 50, y: 37, r: 0 }, { x: 50, y: 63, r: 180 },
   ],
   9: [
-    { x: 24, y: 14, r: 0 }, { x: 24, y: 35, r: 0 }, { x: 24, y: 56, r: 180 }, { x: 24, y: 77, r: 180 },
-    { x: 76, y: 14, r: 0 }, { x: 76, y: 35, r: 0 }, { x: 76, y: 56, r: 180 }, { x: 76, y: 77, r: 180 },
-    { x: 50, y: 93, r: 180 },
+    { x: 28, y: 22, r: 0 }, { x: 28, y: 42, r: 0 }, { x: 28, y: 58, r: 180 }, { x: 28, y: 78, r: 180 },
+    { x: 72, y: 22, r: 0 }, { x: 72, y: 42, r: 0 }, { x: 72, y: 58, r: 180 }, { x: 72, y: 78, r: 180 },
+    { x: 50, y: 50, r: 0 },
   ],
   10: [
-    { x: 24, y: 12, r: 0 }, { x: 24, y: 32, r: 0 }, { x: 24, y: 52, r: 180 }, { x: 24, y: 72, r: 180 },
-    { x: 76, y: 12, r: 0 }, { x: 76, y: 32, r: 0 }, { x: 76, y: 52, r: 180 }, { x: 76, y: 72, r: 180 },
-    { x: 50, y: 91, r: 180 }, { x: 50, y: 15, r: 0 },
+    { x: 28, y: 22, r: 0 }, { x: 28, y: 40, r: 0 }, { x: 28, y: 60, r: 180 }, { x: 28, y: 78, r: 180 },
+    { x: 72, y: 22, r: 0 }, { x: 72, y: 40, r: 0 }, { x: 72, y: 60, r: 180 }, { x: 72, y: 78, r: 180 },
+    { x: 50, y: 31, r: 0 }, { x: 50, y: 69, r: 180 },
   ],
 }
 
@@ -65,8 +66,10 @@ export default function PipLayout({ rank, suit, cardWidth, isRed }: PipLayoutPro
   const s = pipSize(w)
   const innerPad = Math.round(w * 0.08)
   const faceLetterSize = Math.max(24, Math.min(88, Math.round(w * 0.55)))
-  const faceSmallSize = Math.max(12, Math.min(36, Math.round(w * 0.22)))
   const faceBorderWidth = Math.max(1, Math.round(w * 0.025))
+  const cornerIndexSize = Math.max(10, Math.min(30, Math.round(w * 0.19)))
+  const cornerTop = Math.round(w * 0.031)
+  const cornerSide = Math.round(w * 0.062)
 
   // Ace
   if (rank === 1) {
@@ -80,6 +83,17 @@ export default function PipLayout({ rank, suit, cardWidth, isRed }: PipLayoutPro
   // Face cards
   if (rank >= 11) {
     const letter = rank === 11 ? 'J' : rank === 12 ? 'Q' : 'K'
+    const isKing = rank === 13
+    const isQueen = rank === 12
+    const artSize = Math.round(w * 0.78)
+    const bgSymSize = Math.max(28, Math.min(100, Math.round(w * 0.62)))
+    const cornerAccent = Math.round(w * 0.14)
+    const ac = faceBorderWidth
+    const tintBg = isRed
+      ? 'linear-gradient(135deg, rgba(239,68,68,0.06) 0%, rgba(239,68,68,0.02) 100%)'
+      : 'linear-gradient(135deg, rgba(30,41,59,0.06) 0%, rgba(30,41,59,0.02) 100%)'
+    const radius = Math.round(w * 0.04)
+
     return (
       <div className="absolute pointer-events-none"
         style={{
@@ -89,42 +103,97 @@ export default function PipLayout({ rank, suit, cardWidth, isRed }: PipLayoutPro
           justifyContent: 'center',
         }}
       >
+        {/* Suit-tinted background */}
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          borderRadius: radius,
+          background: tintBg,
+        }} />
+
+        {/* Face card illustration */}
+        <div className="absolute inset-0 flex items-center justify-center" style={{ transform: 'translateY(-2%)' }}>
+          <FaceCardArt rank={rank} suit={suit} color={color} width={artSize} />
+        </div>
+
         {/* Ornamental border box */}
         <div style={{
           position: 'absolute',
-          inset: faceBorderWidth * 2,
-          border: `${faceBorderWidth}px solid ${color}`,
-          borderRadius: Math.round(w * 0.04),
-          opacity: 0.7,
+          inset: ac * 2,
+          border: `${ac}px solid ${color}`,
+          borderRadius: radius,
+          opacity: 0.6,
         }} />
-        {/* Corner accents */}
-        <div style={{ position: 'absolute', top: faceBorderWidth * 2, left: faceBorderWidth * 3, width: Math.round(w * 0.12), height: Math.round(w * 0.12), borderTop: `${faceBorderWidth}px solid ${color}`, borderLeft: `${faceBorderWidth}px solid ${color}`, opacity: 0.5 }} />
-        <div style={{ position: 'absolute', top: faceBorderWidth * 2, right: faceBorderWidth * 3, width: Math.round(w * 0.12), height: Math.round(w * 0.12), borderTop: `${faceBorderWidth}px solid ${color}`, borderRight: `${faceBorderWidth}px solid ${color}`, opacity: 0.5 }} />
+
+        {/* Queen: second inner border */}
+        {isQueen && (
+          <div style={{
+            position: 'absolute',
+            inset: ac * 5,
+            border: `${Math.max(1, ac - 1)}px solid ${color}`,
+            borderRadius: radius,
+            opacity: 0.3,
+          }} />
+        )}
+
+        {/* All four corner accents */}
+        <div style={{ position: 'absolute', top: ac * 2, left: ac * 3, width: cornerAccent, height: cornerAccent, borderTop: `${ac}px solid ${color}`, borderLeft: `${ac}px solid ${color}`, opacity: 0.5, borderRadius: radius }} />
+        <div style={{ position: 'absolute', top: ac * 2, right: ac * 3, width: cornerAccent, height: cornerAccent, borderTop: `${ac}px solid ${color}`, borderRight: `${ac}px solid ${color}`, opacity: 0.5, borderRadius: radius }} />
+        <div style={{ position: 'absolute', bottom: ac * 2, left: ac * 3, width: cornerAccent, height: cornerAccent, borderBottom: `${ac}px solid ${color}`, borderLeft: `${ac}px solid ${color}`, opacity: 0.5, borderRadius: radius }} />
+        <div style={{ position: 'absolute', bottom: ac * 2, right: ac * 3, width: cornerAccent, height: cornerAccent, borderBottom: `${ac}px solid ${color}`, borderRight: `${ac}px solid ${color}`, opacity: 0.5, borderRadius: radius }} />
+
+        {/* Large faint background suit symbol */}
+        <span style={{
+          position: 'absolute',
+          fontSize: bgSymSize,
+          color,
+          opacity: 0.12,
+          lineHeight: 1,
+        }}>
+          {sym}
+        </span>
+
+        {/* King: crown accent above the letter */}
+        {isKing && (
+          <span style={{
+            position: 'absolute',
+            top: '12%',
+            fontSize: Math.max(14, Math.min(44, Math.round(w * 0.28))),
+            color,
+            opacity: 0.7,
+            lineHeight: 1,
+          }}>
+            ♛
+          </span>
+        )}
 
         {/* Main letter */}
         <span style={{
+          position: 'relative',
           fontSize: faceLetterSize,
           color,
           fontWeight: 700,
           lineHeight: 1,
           fontFamily: 'Georgia, serif',
+          textShadow: isRed
+            ? '0 1px 2px rgba(239,68,68,0.15)'
+            : '0 1px 2px rgba(30,41,59,0.15)',
         }}>
           {letter}
         </span>
 
-        {/* Mirror letter at bottom */}
-        <span style={{
-          position: 'absolute',
-          bottom: '5%',
-          fontSize: faceSmallSize,
-          color,
-          fontWeight: 700,
-          lineHeight: 1,
-          fontFamily: 'Georgia, serif',
-          transform: 'rotate(180deg)',
-        }}>
-          {letter}
-        </span>
+        {/* Bottom-right index, rotated 180° */}
+        <div
+          className="absolute flex flex-col items-center leading-none pointer-events-none"
+          style={{ bottom: cornerTop, right: cornerSide, transform: 'rotate(180deg)' }}
+        >
+          <span className="font-bold" style={{ fontSize: cornerIndexSize, color, lineHeight: 1 }}>
+            {letter}
+          </span>
+          <span style={{ fontSize: cornerIndexSize, color, lineHeight: 1 }}>
+            {sym}
+          </span>
+        </div>
       </div>
     )
   }

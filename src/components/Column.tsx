@@ -1,4 +1,4 @@
-import { AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import type { Card as CardType } from '../types'
 import Card from './Card'
 import { getValidRunFrom } from '../engine/rules'
@@ -43,6 +43,9 @@ interface ColumnProps {
   cards: CardType[]
   columnIndex: number
   isDragTarget?: boolean
+  isSource?: boolean
+  isValidDropTarget?: boolean
+  hintCardId?: string | null
   onCardPointerDown?: (cardIndex: number, e: React.PointerEvent) => void
 }
 
@@ -50,6 +53,9 @@ export default function Column({
   cards,
   columnIndex,
   isDragTarget,
+  isSource,
+  isValidDropTarget,
+  hintCardId,
   onCardPointerDown,
 }: ColumnProps) {
   const dims = useCardDimensions()
@@ -66,25 +72,42 @@ export default function Column({
           : ''
         }
         ${isDragTarget
-          ? 'ring-2 ring-[#00f0ff]/60 bg-[#00f0ff]/5 shadow-[inset_0_0_30px_rgba(0,240,255,0.1)]'
-          : ''
+          ? 'ring-2 ring-[#00f0ff]/60 bg-[#00f0ff]/8 shadow-[inset_0_0_30px_rgba(0,240,255,0.15)]'
+          : isValidDropTarget
+            ? 'ring-1 ring-[#4dff88]/40 bg-[#4dff88]/8 animate-pulse'
+            : isSource
+              ? 'opacity-60'
+              : ''
         }
       `}
       style={{ minHeight: height, touchAction: 'none' }}
     >
       {isEmpty ? (
-        <div className="flex flex-col items-center pointer-events-none select-none gap-1">
+        <motion.div
+          className="flex flex-col items-center pointer-events-none select-none gap-2"
+          animate={isDragTarget ? { scale: [1, 1.05, 1] } : { scale: 1 }}
+          transition={{ duration: 0.8, repeat: isDragTarget ? Infinity : 0, ease: 'easeInOut' }}
+        >
           <div
-            className="border border-indigo-500/20 rounded-md"
+            className="border border-indigo-500/20 flex items-center justify-center"
             style={{
               width: dims.cardWidth,
               aspectRatio: '5 / 7',
+              borderRadius: Math.round(dims.cardWidth * 0.094),
+              background: isDragTarget
+                ? 'linear-gradient(135deg, rgba(0,240,255,0.08) 0%, rgba(0,240,255,0.03) 100%)'
+                : 'rgba(99,102,241,0.03)',
+              borderColor: isDragTarget ? 'rgba(0,240,255,0.4)' : undefined,
             }}
-          />
+          >
+            <span style={{ fontSize: Math.round(dims.cardWidth * 0.25), color: 'rgba(99,102,241,0.25)' }}>
+              ♠
+            </span>
+          </div>
           <span className="text-indigo-400/50 text-xs font-medium">
             {columnIndex + 1}
           </span>
-        </div>
+        </motion.div>
       ) : (
         <div className="relative w-full" style={{ minHeight: height }}>
           <AnimatePresence mode="sync">
@@ -100,6 +123,7 @@ export default function Column({
                   offset={offset}
                   zIndex={index}
                   isBlocked={isBlocked}
+                  isHinted={hintCardId === card.id}
                   onPointerDown={(e) => onCardPointerDown?.(index, e)}
                 />
               )

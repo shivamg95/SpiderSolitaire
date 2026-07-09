@@ -10,6 +10,8 @@
   --color-neon-green: #4dff88;
   --color-card-back: #1a1a3e;
   --color-accent-gold: #ffd700;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-serif: Georgia, 'Times New Roman', serif;
 }
 
 * {
@@ -22,7 +24,7 @@ body {
   background: linear-gradient(135deg, #050510 0%, #0a0a1a 40%, #0f1030 70%, #050510 100%);
   min-height: 100dvh;
   overflow: hidden;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   user-select: none;
   -webkit-user-select: none;
   touch-action: manipulation;
