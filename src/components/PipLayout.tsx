@@ -65,7 +65,6 @@ export default function PipLayout({ rank, suit, cardWidth, isRed }: PipLayoutPro
   const color = isRed ? '#ef4444' : '#1e293b'
   const s = pipSize(w)
   const innerPad = Math.round(w * 0.08)
-  const faceLetterSize = Math.max(24, Math.min(88, Math.round(w * 0.55)))
   const faceBorderWidth = Math.max(1, Math.round(w * 0.025))
   const cornerIndexSize = Math.max(10, Math.min(30, Math.round(w * 0.19)))
   const cornerTop = Math.round(w * 0.031)
@@ -83,7 +82,6 @@ export default function PipLayout({ rank, suit, cardWidth, isRed }: PipLayoutPro
   // Face cards
   if (rank >= 11) {
     const letter = rank === 11 ? 'J' : rank === 12 ? 'Q' : 'K'
-    const isKing = rank === 13
     const isQueen = rank === 12
     const artSize = Math.round(w * 0.78)
     const bgSymSize = Math.max(28, Math.min(100, Math.round(w * 0.62)))
@@ -151,35 +149,6 @@ export default function PipLayout({ rank, suit, cardWidth, isRed }: PipLayoutPro
           lineHeight: 1,
         }}>
           {sym}
-        </span>
-
-        {/* King: crown accent above the letter */}
-        {isKing && (
-          <span style={{
-            position: 'absolute',
-            top: '12%',
-            fontSize: Math.max(14, Math.min(44, Math.round(w * 0.28))),
-            color,
-            opacity: 0.7,
-            lineHeight: 1,
-          }}>
-            ♛
-          </span>
-        )}
-
-        {/* Main letter */}
-        <span style={{
-          position: 'relative',
-          fontSize: faceLetterSize,
-          color,
-          fontWeight: 700,
-          lineHeight: 1,
-          fontFamily: 'Georgia, serif',
-          textShadow: isRed
-            ? '0 1px 2px rgba(239,68,68,0.15)'
-            : '0 1px 2px rgba(30,41,59,0.15)',
-        }}>
-          {letter}
         </span>
 
         {/* Bottom-right index, rotated 180° */}

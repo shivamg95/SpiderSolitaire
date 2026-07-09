@@ -2,9 +2,9 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion'
 import { useGameStore } from '../store/gameStore'
 import { useStatsStore } from '../store/statsStore'
-import { HelpCircle } from 'lucide-react'
+import { HelpCircle, ChevronLeft, ChevronRight } from 'lucide-react'
 import Starfield from './Starfield'
-import Column, { getPointerColumnIndex, getCardOffset } from './Column'
+import Column, { getPointerColumnIndex, getCardOffset, computeCompressedOffsets } from './Column'
 import StockPile from './StockPile'
 import Foundation from './Foundation'
 import Controls from './Controls'
@@ -22,6 +22,7 @@ import type { GameMode, Card as CardType, Move, GameSnapshot, MoveRecord, GameSt
 
 const MAX_TIMELINES = 3
 const TIMELINE_NAMES = ['Alpha', 'Beta', 'Gamma']
+const SIDEBAR_WIDTH = 176
 
 interface TimelineEntry {
   columns: GameSnapshot['columns']
@@ -95,6 +96,7 @@ export default function Board() {
   const [hintSourceCard, setHintSourceCard] = useState<string | null>(null)
   const [hasRecorded, setHasRecorded] = useState(false)
   const [elapsedDisplay, setElapsedDisplay] = useState(0)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   // Timeline state
   const [timelines, setTimelines] = useState<TimelineEntry[]>([])
@@ -103,8 +105,16 @@ export default function Board() {
   const prevFoundations = useRef(foundations)
   const prevGameStatus = useRef(gameStatus)
   const hintTimeoutRef = useRef<number>(0)
-  const dims = useCardDimensions()
-  const [clearParticles, setClearParticles] = useState<{ id: number; x: number; y: number }[]>([])
+  const dims = useCardDimensions((typeof window !== 'undefined' ? window.innerWidth : 1024) < 768 ? 0 : SIDEBAR_WIDTH)
+  const [clearParticles, setClearParticles] = useState<{ id: number; x: number; y: number; size: number; color: string }[]>([])
+
+  const availableHeight = dims.viewportH - 32
+  const sidebarStockCardWidth = 76
+  const isSmallScreen = dims.viewportW < 768
+
+  const { faceDownOffset: dynamicFaceDown, faceUpOffset: dynamicFaceUp } = gameStatus !== 'idle'
+    ? computeCompressedOffsets(columns, dims.faceDownOffset, dims.faceUpOffset, dims.cardHeight, availableHeight)
+    : { faceDownOffset: dims.faceDownOffset, faceUpOffset: dims.faceUpOffset }
 
   useEffect(() => {
     if (gameMode) setSelectedMode(gameMode)
@@ -349,6 +359,7 @@ export default function Board() {
       if (gameStatus !== 'playing') return
 
       e.preventDefault()
+      if (isSmallScreen) setSidebarCollapsed(true)
 
       const srcCol = columns[colIndex]
       const runSize = getValidRunFrom(srcCol, cardIndex)
@@ -377,7 +388,7 @@ export default function Board() {
         target.setPointerCapture(e.pointerId)
       }
     },
-    [columns, gameStatus]
+    [columns, gameStatus, isSmallScreen]
   )
 
   const handleDeal = useCallback(() => {
@@ -419,7 +430,7 @@ export default function Board() {
 
     const sourceRect = sourceEl.getBoundingClientRect()
     const targetRect = targetEl.getBoundingClientRect()
-    const cardOffset = getCardOffset(fromCol, cardIndex, dims.faceDownOffset, dims.faceUpOffset)
+    const cardOffset = getCardOffset(fromCol, cardIndex, dynamicFaceDown, dynamicFaceUp)
 
     const id = Date.now()
     setHintAnimData({
@@ -437,7 +448,7 @@ export default function Board() {
       setHintAnimData(prev => prev && prev.card.id === card.id ? null : prev)
       setHintSourceCard(prev => prev === card.id ? null : prev)
     }, 1500)
-  }, [columns, gameStatus, hintMoves.length, hintIndex, dims])
+  }, [columns, gameStatus, hintMoves.length, hintIndex, dims, dynamicFaceDown, dynamicFaceUp])
 
   const handleAutoComplete = useCallback(() => {
     if (gameStatus !== 'playing') return
@@ -466,128 +477,66 @@ export default function Board() {
   }
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-transparent text-white">
+    <div className="fixed inset-0 flex flex-row bg-transparent text-white">
       <Starfield />
 
-      <div className="relative z-10 flex flex-col h-full">
-        <header className="flex flex-col gap-2 px-4 py-2.5 bg-black/30 backdrop-blur-sm border-b border-indigo-800/20">
-          {/* Top row: stock, foundations, score */}
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <StockPile
-                stockCount={stock.length}
-                canDeal={stock.length >= 10 && gameStatus === 'playing'}
-                onDeal={handleDeal}
-                cardWidth={dims.cardWidth}
-              />
-              {showBoard && (
-                <div className="hidden sm:flex flex-col items-start gap-1">
-                  <span className="text-[10px] uppercase tracking-wider text-indigo-400/60 font-semibold">Completed</span>
-                  <Foundation completedSuits={completedSuits} cardWidth={dims.cardWidth} />
-                </div>
-              )}
-            </div>
+      {/* Main game area */}
+      <div className="flex-1 flex flex-col min-w-0 relative z-10">
 
-            <div className="flex-1 flex items-center justify-center sm:hidden">
-              {showBoard && (
-                <Foundation completedSuits={completedSuits} cardWidth={dims.cardWidth} />
-              )}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <ScorePanel
-                moves={moves}
-                timeMs={elapsedDisplay}
-                gameStatus={gameStatus}
-              />
-            </div>
-          </div>
-
-          {/* Bottom row: controls toolbar */}
-          <div className="flex items-center justify-center">
-            <Controls
-              hasUndo={hasUndo()}
-              hasRedo={hasRedo()}
-              canAutoComplete={isAutoCompletable}
-              canSplit={gameStatus === 'playing' && timelines.length < MAX_TIMELINES}
-              gameInProgress={gameStatus === 'playing'}
-              onUndo={undo}
-              onRedo={redo}
-              onHint={handleHint}
-              onAutoComplete={handleAutoComplete}
-              onResign={handleResign}
-              onSplitTimeline={handleSplitTimeline}
-              onHelp={() => setShowHelp(true)}
-              onNewGame={handleNewGame}
-              selectedMode={selectedMode}
-              onSelectMode={setSelectedMode}
-            />
-          </div>
-        </header>
-
-        <TimelineBar
-          timelines={timelineNames}
-          activeIndex={activeTimelineIndex}
-          maxTimelines={MAX_TIMELINES}
-          onSwitch={handleSwitchTimeline}
-          onSplit={handleSplitTimeline}
-          visible={showBoard && timelines.length > 1}
-        />
-
-        <main className="flex-1 flex flex-col px-2 pt-2 pb-2 overflow-hidden relative">
-          {!showBoard ? (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-center">
-                <motion.h1
-                  className="text-3xl font-bold bg-gradient-to-r from-[#00f0ff] to-[#b44dff] bg-clip-text text-transparent mb-4"
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, ease: 'easeOut' }}
-                >
-                  Spider Solitaire
-                </motion.h1>
-                <motion.p
-                  className="text-indigo-300/80 mb-6"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.15, duration: 0.4 }}
-                >
-                  Select a difficulty and start a new game
-                </motion.p>
-                <div className="flex gap-3 justify-center mb-4">
-                  {(['easy', 'medium', 'hard'] as GameMode[]).map((mode, i) => (
-                    <motion.button
-                      key={mode}
-                      className="px-6 py-3 rounded-lg bg-indigo-900/60 border border-indigo-700/50
-                                 hover:border-[#00f0ff]/40 hover:shadow-[0_0_15px_rgba(0,240,255,0.1)]
-                                 transition-all text-white font-medium"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.25 + i * 0.1, duration: 0.4, ease: 'easeOut' }}
-                      onClick={() => handleNewGame(mode)}
-                    >
-                      {mode === 'easy' ? '1 Suit (Easy)' : mode === 'medium' ? '2 Suits (Medium)' : '4 Suits (Hard)'}
-                    </motion.button>
-                  ))}
-                </div>
-                <motion.button
-                  className="px-5 py-2 rounded-lg text-indigo-300/80 hover:text-indigo-300 border border-indigo-700/30 hover:border-indigo-600/50 transition-all text-sm"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.55, duration: 0.4 }}
-                  onClick={() => setShowHelp(true)}
-                >
-                  <HelpCircle className="w-4 h-4 inline mr-1.5" />
-                  How to Play
-                </motion.button>
+        {!showBoard ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <motion.h1
+                className="text-3xl font-bold bg-gradient-to-r from-[#00f0ff] to-[#b44dff] bg-clip-text text-transparent mb-4"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: 'easeOut' }}
+              >
+                Spider Solitaire
+              </motion.h1>
+              <motion.p
+                className="text-indigo-300/80 mb-6"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.15, duration: 0.4 }}
+              >
+                Select a difficulty and start a new game
+              </motion.p>
+              <div className="flex gap-3 justify-center mb-4">
+                {(['easy', 'medium', 'hard'] as GameMode[]).map((mode, i) => (
+                  <motion.button
+                    key={mode}
+                    className="px-6 py-3 rounded-lg bg-indigo-900/60 border border-indigo-700/50
+                               hover:border-[#00f0ff]/40 hover:shadow-[0_0_15px_rgba(0,240,255,0.1)]
+                               transition-all text-white font-medium"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.25 + i * 0.1, duration: 0.4, ease: 'easeOut' }}
+                    onClick={() => handleNewGame(mode)}
+                  >
+                    {mode === 'easy' ? '1 Suit (Easy)' : mode === 'medium' ? '2 Suits (Medium)' : '4 Suits (Hard)'}
+                  </motion.button>
+                ))}
               </div>
+              <motion.button
+                className="px-5 py-2 rounded-lg text-indigo-300/80 hover:text-indigo-300 border border-indigo-700/30 hover:border-indigo-600/50 transition-all text-sm"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.55, duration: 0.4 }}
+                onClick={() => setShowHelp(true)}
+              >
+                <HelpCircle className="w-4 h-4 inline mr-1.5" />
+                How to Play
+              </motion.button>
             </div>
-          ) : (
+          </div>
+        ) : (
+          <main className="flex-1 flex p-2 overflow-hidden">
             <LayoutGroup>
               <div
-                className="flex-1 flex min-h-0 overflow-auto rounded-xl"
+                className="flex-1 flex overflow-x-auto overflow-y-hidden rounded-xl"
                 style={{
-                  touchAction: 'pan-y',
+                  touchAction: 'pan-x',
                   background: `
                     radial-gradient(circle at 50% 50%, rgba(15,16,48,0.6) 0%, rgba(10,10,30,0.8) 100%),
                     repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,240,255,0.015) 2px, rgba(0,240,255,0.015) 4px),
@@ -597,7 +546,7 @@ export default function Board() {
               >
                 <div
                   className="flex px-2 py-2"
-                   style={{ gap: dims.columnGap, minWidth: TABLEAU_COLUMNS * dims.cardWidth + (TABLEAU_COLUMNS - 1) * dims.columnGap + CONTAINER_PADDING_X }}
+                  style={{ gap: dims.columnGap, minWidth: TABLEAU_COLUMNS * dims.cardWidth + (TABLEAU_COLUMNS - 1) * dims.columnGap + CONTAINER_PADDING_X }}
                 >
                   {columns.map((col, idx) => (
                     <Column
@@ -608,169 +557,253 @@ export default function Board() {
                       isSource={drag !== null && drag.column === idx}
                       isValidDropTarget={drag !== null && validDragTargets.has(idx)}
                       hintCardId={hintSourceCard}
+                      faceDownOffset={dynamicFaceDown}
+                      faceUpOffset={dynamicFaceUp}
+                      cardWidthOverride={dims.cardWidth}
+                      cardHeightOverride={dims.cardHeight}
                       onCardPointerDown={(cardIndex, e) => handleCardPointerDown(idx, cardIndex, e)}
                     />
                   ))}
                 </div>
               </div>
             </LayoutGroup>
-          )}
+          </main>
+        )}
 
-          {/* Clear particles */}
-          <AnimatePresence>
-            {clearParticles.map((p) => (
-              <motion.div
-                key={p.id}
-                className="absolute rounded-full pointer-events-none z-50"
+        {/* Clear particles */}
+        <AnimatePresence>
+          {clearParticles.map((p) => (
+            <motion.div
+              key={p.id}
+              className="absolute rounded-full pointer-events-none z-50"
+              style={{
+                left: `${p.x}%`,
+                top: `${p.y}%`,
+                width: `${p.size}px`,
+                height: `${p.size}px`,
+                background: p.color,
+                boxShadow: `0 0 ${p.size * 2}px ${p.color}`,
+              }}
+              initial={{ scale: 0, opacity: 1 }}
+              animate={{ scale: 2, opacity: 0, y: -50 - Math.random() * 40, x: (Math.random() - 0.5) * 60 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1.2 + Math.random() * 0.8, ease: 'easeOut' }}
+            />
+          ))}
+        </AnimatePresence>
+      </div>
+
+      {/* Sidebar collapse toggle — only on small screens */}
+      {showBoard && isSmallScreen && (
+        <button
+          className="fixed top-1/2 -translate-y-1/2 z-30 w-6 h-12 bg-black/40 backdrop-blur-sm border border-indigo-700/30 rounded-l-md flex items-center justify-center hover:bg-black/60 transition-colors"
+          style={{ right: sidebarCollapsed ? 0 : SIDEBAR_WIDTH }}
+          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+        >
+          {sidebarCollapsed ? (
+            <ChevronLeft className="w-4 h-4 text-indigo-400" />
+          ) : (
+            <ChevronRight className="w-4 h-4 text-indigo-400" />
+          )}
+        </button>
+      )}
+
+      {/* Right sidebar */}
+      <AnimatePresence>
+        {showBoard && (!isSmallScreen || !sidebarCollapsed) && (
+          <motion.aside
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: SIDEBAR_WIDTH, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            className="flex-shrink-0 flex flex-col gap-2 px-3 py-2.5 bg-black/30 backdrop-blur-sm border-l border-indigo-800/20 overflow-y-auto z-10 overflow-hidden"
+          >
+            <div style={{ width: SIDEBAR_WIDTH - 24 }}>
+              <StockPile
+                stockCount={stock.length}
+                canDeal={stock.length >= 10 && gameStatus === 'playing'}
+                onDeal={handleDeal}
+                cardWidth={sidebarStockCardWidth}
+              />
+
+              <div className="border-t border-indigo-800/20 my-1" />
+
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-[10px] uppercase tracking-wider text-indigo-400/60 font-semibold">Completed</span>
+                <Foundation completedSuits={completedSuits} cardWidth={sidebarStockCardWidth} vertical />
+              </div>
+
+              <div className="border-t border-indigo-800/20 my-1" />
+
+              <ScorePanel
+                moves={moves}
+                timeMs={elapsedDisplay}
+                gameStatus={gameStatus}
+              />
+
+              <div className="border-t border-indigo-800/20 my-1" />
+
+              <Controls
+                hasUndo={hasUndo()}
+                hasRedo={hasRedo()}
+                canAutoComplete={isAutoCompletable}
+                canSplit={gameStatus === 'playing' && timelines.length < MAX_TIMELINES}
+                gameInProgress={gameStatus === 'playing'}
+                onUndo={undo}
+                onRedo={redo}
+                onHint={handleHint}
+                onAutoComplete={handleAutoComplete}
+                onResign={handleResign}
+                onSplitTimeline={handleSplitTimeline}
+                onHelp={() => setShowHelp(true)}
+                onNewGame={handleNewGame}
+                selectedMode={selectedMode}
+                onSelectMode={setSelectedMode}
+                vertical
+              />
+
+              <TimelineBar
+                timelines={timelineNames}
+                activeIndex={activeTimelineIndex}
+                maxTimelines={MAX_TIMELINES}
+                onSwitch={handleSwitchTimeline}
+                onSplit={handleSplitTimeline}
+                visible={showBoard && timelines.length > 1}
+                vertical
+              />
+            </div>
+          </motion.aside>
+        )}
+      </AnimatePresence>
+
+      {/* Drag ghost card */}
+      <AnimatePresence>
+        {drag && (() => {
+          const gw = dims.cardWidth
+          const gCornerSize = Math.max(9, Math.min(24, Math.round(gw * 0.15)))
+          const gCenterSize = Math.max(16, Math.min(45, Math.round(gw * 0.28)))
+          const gCornerTop = Math.round(gw * 0.031)
+          const gCornerSide = Math.round(gw * 0.062)
+          const gRadius = Math.round(gw * 0.094)
+          const gShadowY = Math.round(gw * 0.125)
+          const gShadowBlur = Math.round(gw * 0.5)
+          const gGlowBlur = Math.round(gw * 0.31)
+          const isRed = drag.card.suit === 'hearts' || drag.card.suit === 'diamonds'
+          const gSuitColor = isRed ? 'text-red-500' : 'text-gray-900'
+          const stackOffset = Math.round(gw * 0.06)
+          const stackCount = Math.min(drag.runSize, 4)
+
+          return (
+          <motion.div
+            className="fixed pointer-events-none z-50 overflow-hidden"
+            style={{
+              width: gw,
+              aspectRatio: '5 / 7',
+              borderRadius: gRadius,
+              x: drag.currentX - dims.halfWidth,
+              y: drag.currentY - dims.halfHeight,
+              rotate: Math.max(-4, Math.min(4, (drag.currentX - drag.startX) * 0.03)),
+            }}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 0.95, scale: 1.03 }}
+            exit={{ opacity: 0, scale: 0.5 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+          >
+            {stackCount > 1 && Array.from({ length: stackCount - 1 }).map((_, si) => (
+              <div
+                key={si}
+                className="absolute rounded-md overflow-hidden"
                 style={{
-                  left: `${p.x}%`,
-                  top: `${p.y}%`,
-                  width: `${p.size}px`,
-                  height: `${p.size}px`,
-                  background: p.color,
-                  boxShadow: `0 0 ${p.size * 2}px ${p.color}`,
+                  width: gw,
+                  aspectRatio: '5 / 7',
+                  top: (si + 1) * stackOffset,
+                  left: (si + 1) * stackOffset,
+                  borderRadius: gRadius,
+                  background: 'linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%)',
+                  boxShadow: `0 1px 4px rgba(0,0,0,0.2)`,
+                  opacity: 0.4 - si * 0.1,
                 }}
-                initial={{ scale: 0, opacity: 1 }}
-                animate={{ scale: 2, opacity: 0, y: -50 - Math.random() * 40, x: (Math.random() - 0.5) * 60 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 1.2 + Math.random() * 0.8, ease: 'easeOut' }}
               />
             ))}
-          </AnimatePresence>
-        </main>
+            <div
+              className="absolute inset-0 rounded-md"
+              style={{
+                background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                boxShadow: `0 ${gShadowY}px ${gShadowBlur}px rgba(0,0,0,0.4), 0 0 ${gGlowBlur}px rgba(0,240,255,0.12)`,
+              }}
+            />
+            <div
+              className="absolute flex flex-col items-center leading-none"
+              style={{ top: gCornerTop, left: gCornerSide }}
+            >
+              <span className={`font-bold ${gSuitColor}`} style={{ fontSize: gCornerSize }}>
+                {getRankName(drag.card.rank)}
+              </span>
+              <span className={gSuitColor} style={{ fontSize: gCornerSize }}>
+                {SUIT_SYMBOLS[drag.card.suit]}
+              </span>
+            </div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className={gSuitColor} style={{ fontSize: gCenterSize }}>
+                {SUIT_SYMBOLS[drag.card.suit]}
+              </span>
+            </div>
+          </motion.div>
+          )
+        })()}
+      </AnimatePresence>
 
-        {/* Drag ghost card */}
-        <AnimatePresence>
-          {drag && (() => {
-            const gw = dims.cardWidth
-            const gCornerSize = Math.max(9, Math.min(24, Math.round(gw * 0.15)))
-            const gCenterSize = Math.max(16, Math.min(45, Math.round(gw * 0.28)))
-            const gCornerTop = Math.round(gw * 0.031)
-            const gCornerSide = Math.round(gw * 0.062)
-            const gRadius = Math.round(gw * 0.094)
-            const gShadowY = Math.round(gw * 0.125)
-            const gShadowBlur = Math.round(gw * 0.5)
-            const gGlowBlur = Math.round(gw * 0.31)
-            const isRed = drag.card.suit === 'hearts' || drag.card.suit === 'diamonds'
-            const gSuitColor = isRed ? 'text-red-500' : 'text-gray-900'
-            const stackOffset = Math.round(gw * 0.06)
-            const stackCount = Math.min(drag.runSize, 4)
+      {/* Flying hint ghost */}
+      <AnimatePresence>
+        {hintAnimData && (() => {
+          const hw = dims.cardWidth
+          const hCornerSize = Math.max(9, Math.min(24, Math.round(hw * 0.15)))
+          const hCenterSize = Math.max(16, Math.min(45, Math.round(hw * 0.28)))
+          const hCornerTop = Math.round(hw * 0.031)
+          const hCornerSide = Math.round(hw * 0.062)
+          const hRadius = Math.round(hw * 0.094)
+          const isRed = hintAnimData.card.suit === 'hearts' || hintAnimData.card.suit === 'diamonds'
+          const hSuitColor = isRed ? 'text-red-500' : 'text-gray-900'
+          const dx = hintAnimData.targetX - hintAnimData.sourceX
+          const dy = hintAnimData.targetY - hintAnimData.sourceY
 
-            return (
+          return (
             <motion.div
+              key={hintAnimId}
               className="fixed pointer-events-none z-50 overflow-hidden"
               style={{
-                width: gw,
+                width: hw,
                 aspectRatio: '5 / 7',
-                borderRadius: gRadius,
-                x: drag.currentX - dims.halfWidth,
-                y: drag.currentY - dims.halfHeight,
-                rotate: Math.max(-4, Math.min(4, (drag.currentX - drag.startX) * 0.03)),
+                left: hintAnimData.sourceX,
+                top: hintAnimData.sourceY,
+                borderRadius: hRadius,
+                background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                boxShadow: '0 0 18px rgba(0,240,255,0.7), 0 4px 16px rgba(0,0,0,0.4)',
               }}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 0.95, scale: 1.03 }}
-              exit={{ opacity: 0, scale: 0.5 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+              initial={{ opacity: 1, x: 0, y: 0 }}
+              animate={{ opacity: [1, 0.9, 0], x: dx, y: dy }}
+              transition={{ duration: 0.7, ease: 'easeInOut', times: [0, 0.6, 1] }}
             >
-              {/* Stacked cards behind the ghost */}
-              {stackCount > 1 && Array.from({ length: stackCount - 1 }).map((_, si) => (
-                <div
-                  key={si}
-                  className="absolute rounded-md overflow-hidden"
-                  style={{
-                    width: gw,
-                    aspectRatio: '5 / 7',
-                    top: (si + 1) * stackOffset,
-                    left: (si + 1) * stackOffset,
-                    borderRadius: gRadius,
-                    background: 'linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%)',
-                    boxShadow: `0 1px 4px rgba(0,0,0,0.2)`,
-                    opacity: 0.4 - si * 0.1,
-                  }}
-                />
-              ))}
-              {/* Main ghost card */}
-              <div
-                className="absolute inset-0 rounded-md"
-                style={{
-                  background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
-                  boxShadow: `0 ${gShadowY}px ${gShadowBlur}px rgba(0,0,0,0.4), 0 0 ${gGlowBlur}px rgba(0,240,255,0.12)`,
-                }}
-              />
               <div
                 className="absolute flex flex-col items-center leading-none"
-                style={{ top: gCornerTop, left: gCornerSide }}
+                style={{ top: hCornerTop, left: hCornerSide }}
               >
-                <span className={`font-bold ${gSuitColor}`} style={{ fontSize: gCornerSize }}>
-                  {getRankName(drag.card.rank)}
+                <span className={`font-bold ${hSuitColor}`} style={{ fontSize: hCornerSize }}>
+                  {getRankName(hintAnimData.card.rank)}
                 </span>
-                <span className={gSuitColor} style={{ fontSize: gCornerSize }}>
-                  {SUIT_SYMBOLS[drag.card.suit]}
+                <span className={hSuitColor} style={{ fontSize: hCornerSize }}>
+                  {SUIT_SYMBOLS[hintAnimData.card.suit]}
                 </span>
               </div>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className={gSuitColor} style={{ fontSize: gCenterSize }}>
-                  {SUIT_SYMBOLS[drag.card.suit]}
+                <span className={hSuitColor} style={{ fontSize: hCenterSize }}>
+                  {SUIT_SYMBOLS[hintAnimData.card.suit]}
                 </span>
               </div>
             </motion.div>
-            )
-          })()}
-        </AnimatePresence>
-
-        {/* Flying hint ghost */}
-        <AnimatePresence>
-          {hintAnimData && (() => {
-            const hw = dims.cardWidth
-            const hCornerSize = Math.max(9, Math.min(24, Math.round(hw * 0.15)))
-            const hCenterSize = Math.max(16, Math.min(45, Math.round(hw * 0.28)))
-            const hCornerTop = Math.round(hw * 0.031)
-            const hCornerSide = Math.round(hw * 0.062)
-            const hRadius = Math.round(hw * 0.094)
-            const isRed = hintAnimData.card.suit === 'hearts' || hintAnimData.card.suit === 'diamonds'
-            const hSuitColor = isRed ? 'text-red-500' : 'text-gray-900'
-            const dx = hintAnimData.targetX - hintAnimData.sourceX
-            const dy = hintAnimData.targetY - hintAnimData.sourceY
-
-            return (
-              <motion.div
-                key={hintAnimId}
-                className="fixed pointer-events-none z-50 overflow-hidden"
-                style={{
-                  width: hw,
-                  aspectRatio: '5 / 7',
-                  left: hintAnimData.sourceX,
-                  top: hintAnimData.sourceY,
-                  borderRadius: hRadius,
-                  background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
-                  boxShadow: '0 0 18px rgba(0,240,255,0.7), 0 4px 16px rgba(0,0,0,0.4)',
-                }}
-                initial={{ opacity: 1, x: 0, y: 0 }}
-                animate={{ opacity: [1, 0.9, 0], x: dx, y: dy }}
-                transition={{ duration: 0.7, ease: 'easeInOut', times: [0, 0.6, 1] }}
-              >
-                <div
-                  className="absolute flex flex-col items-center leading-none"
-                  style={{ top: hCornerTop, left: hCornerSide }}
-                >
-                  <span className={`font-bold ${hSuitColor}`} style={{ fontSize: hCornerSize }}>
-                    {getRankName(hintAnimData.card.rank)}
-                  </span>
-                  <span className={hSuitColor} style={{ fontSize: hCornerSize }}>
-                    {SUIT_SYMBOLS[hintAnimData.card.suit]}
-                  </span>
-                </div>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className={hSuitColor} style={{ fontSize: hCenterSize }}>
-                    {SUIT_SYMBOLS[hintAnimData.card.suit]}
-                  </span>
-                </div>
-              </motion.div>
-            )
-          })()}
-        </AnimatePresence>
-
-      </div>
+          )
+        })()}
+      </AnimatePresence>
 
       <WinScreen
         visible={showWinScreen && !showPostGameReview}

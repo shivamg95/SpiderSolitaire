@@ -18,6 +18,7 @@ interface ControlsProps {
   onNewGame: (mode: GameMode) => void
   selectedMode: GameMode | null
   onSelectMode: (mode: GameMode) => void
+  vertical?: boolean
 }
 
 const MODE_LABELS: Record<GameMode, string> = {
@@ -58,6 +59,7 @@ export default function Controls({
   onNewGame,
   selectedMode,
   onSelectMode,
+  vertical,
 }: ControlsProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -97,6 +99,93 @@ export default function Controls({
       ))}
     </div>
   )
+
+  if (vertical) {
+    const btn = 'flex items-center gap-2 px-2.5 py-2 rounded-md text-xs font-medium transition-colors w-full'
+    return (
+      <div className="flex flex-col gap-1.5 w-full">
+        <div className="flex gap-1">{modeButtons(true)}</div>
+
+        <button
+          className={`${btn} justify-center ${selectedMode
+            ? 'bg-[#00f0ff]/20 text-[#00f0ff] border border-[#00f0ff]/40 hover:bg-[#00f0ff]/30'
+            : 'bg-indigo-900/50 text-indigo-300 hover:bg-indigo-800/60'
+          }`}
+          onClick={() => selectedMode && onNewGame(selectedMode)}
+        >
+          <Play className="w-3.5 h-3.5" />
+          New Game
+        </button>
+
+        <div className="border-t border-indigo-800/20 my-0.5" />
+
+        <button
+          className={`${btn} py-3 bg-indigo-900/50 text-indigo-300 hover:bg-indigo-800/60${(!hasUndo || !gameInProgress) ? toolbarBtnDisabled : ''}`}
+          onClick={onUndo}
+          disabled={!hasUndo || !gameInProgress}
+        >
+          <Undo2 className={iconBase} />
+          Undo
+        </button>
+
+        <button
+          className={`${btn} bg-indigo-900/50 text-indigo-300 hover:bg-indigo-800/60${(!hasRedo || !gameInProgress) ? toolbarBtnDisabled : ''}`}
+          onClick={onRedo}
+          disabled={!hasRedo || !gameInProgress}
+        >
+          <Redo2 className={iconBase} />
+          Redo
+        </button>
+
+        <button
+          className={`${btn} py-3 bg-indigo-900/50 text-indigo-300 hover:bg-indigo-800/60${!gameInProgress ? toolbarBtnDisabled : ''}`}
+          onClick={onHint}
+          disabled={!gameInProgress}
+        >
+          <Lightbulb className={iconBase} />
+          Hint
+        </button>
+
+        {canAutoComplete && (
+          <button
+            className={`${btn} bg-[#4dff88]/20 text-[#4dff88] hover:bg-[#4dff88]/30 animate-pulse`}
+            onClick={onAutoComplete}
+          >
+            <Sparkles className={iconBase} />
+            Auto Complete
+          </button>
+        )}
+
+        {gameInProgress && canSplit && (
+          <button
+            className={`${btn} bg-[#b44dff]/20 text-[#b44dff] hover:bg-[#b44dff]/30`}
+            onClick={onSplitTimeline}
+          >
+            <GitBranch className={iconBase} />
+            Split Timeline
+          </button>
+        )}
+
+        {gameInProgress && (
+          <button
+            className={`${btn} bg-red-900/30 text-red-400/80 hover:bg-red-900/50 hover:text-red-400`}
+            onClick={onResign}
+          >
+            <Flag className={iconBase} />
+            Resign
+          </button>
+        )}
+
+        <button
+          className={`${btn} bg-indigo-900/50 text-indigo-300/80 hover:text-indigo-300 hover:bg-indigo-800/60`}
+          onClick={onHelp}
+        >
+          <HelpCircle className={iconBase} />
+          Help
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="flex items-center justify-between w-full max-w-4xl gap-2">

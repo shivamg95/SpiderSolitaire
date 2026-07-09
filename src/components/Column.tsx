@@ -4,6 +4,9 @@ import Card from './Card'
 import { getValidRunFrom } from '../engine/rules'
 import { useCardDimensions } from '../hooks/useCardDimensions'
 
+const MIN_FACE_DOWN = 6
+const MIN_FACE_UP = 8
+
 export function getCardOffset(
   cards: CardType[],
   upToIndex: number,
@@ -28,6 +31,55 @@ export function getColumnHeight(
   return lastCardOffset + cardHeight + Math.round(cardHeight * 0.15)
 }
 
+export function computeCompressedOffsets(
+  columns: CardType[][],
+  baseFaceDown: number,
+  baseFaceUp: number,
+  cardHeight: number,
+  availableHeight: number,
+): { faceDownOffset: number; faceUpOffset: number; needsCompression: boolean } {
+  let maxHeight = 0
+  for (const col of columns) {
+    const h = getColumnHeight(col, baseFaceDown, baseFaceUp, cardHeight)
+    if (h > maxHeight) maxHeight = h
+  }
+
+  if (maxHeight <= availableHeight) {
+    return { faceDownOffset: baseFaceDown, faceUpOffset: baseFaceUp, needsCompression: false }
+  }
+
+  let reqFaceUp = baseFaceUp
+  let reqFaceDown = baseFaceDown
+
+  for (const col of columns) {
+    if (col.length === 0) continue
+    const faceDownCount = col.filter(c => !c.faceUp).length
+    const faceUpCount = col.filter(c => c.faceUp).length
+    const cardPad = cardHeight + Math.round(cardHeight * 0.15)
+    const availForFaceUp = availableHeight - faceDownCount * baseFaceDown - cardPad
+    if (faceUpCount > 0 && availForFaceUp > 0) {
+      const perCard = Math.floor(availForFaceUp / faceUpCount)
+      if (perCard < reqFaceUp) reqFaceUp = Math.max(MIN_FACE_UP, perCard)
+    }
+  }
+
+  if (reqFaceUp <= MIN_FACE_UP + 1) {
+    for (const col of columns) {
+      if (col.length === 0) continue
+      const faceDownCount = col.filter(c => !c.faceUp).length
+      const faceUpCount = col.filter(c => c.faceUp).length
+      const cardPad = cardHeight + Math.round(cardHeight * 0.15)
+      const availForFaceDown = availableHeight - faceUpCount * reqFaceUp - cardPad
+      if (faceDownCount > 0 && availForFaceDown > 0) {
+        const perCard = Math.floor(availForFaceDown / faceDownCount)
+        if (perCard < reqFaceDown) reqFaceDown = Math.max(MIN_FACE_DOWN, perCard)
+      }
+    }
+  }
+
+  return { faceDownOffset: reqFaceDown, faceUpOffset: reqFaceUp, needsCompression: true }
+}
+
 export function getPointerColumnIndex(x: number): number | null {
   const columns = document.querySelectorAll('[data-column-index]')
   for (let i = 0; i < columns.length; i++) {
@@ -46,6 +98,10 @@ interface ColumnProps {
   isSource?: boolean
   isValidDropTarget?: boolean
   hintCardId?: string | null
+  faceDownOffset?: number
+  faceUpOffset?: number
+  cardWidthOverride?: number
+  cardHeightOverride?: number
   onCardPointerDown?: (cardIndex: number, e: React.PointerEvent) => void
 }
 
@@ -56,11 +112,19 @@ export default function Column({
   isSource,
   isValidDropTarget,
   hintCardId,
+  faceDownOffset: fdProp,
+  faceUpOffset: fuProp,
+  cardWidthOverride,
+  cardHeightOverride,
   onCardPointerDown,
 }: ColumnProps) {
   const dims = useCardDimensions()
   const isEmpty = cards.length === 0
-  const height = getColumnHeight(cards, dims.faceDownOffset, dims.faceUpOffset, dims.cardHeight)
+  const faceDownOffset = fdProp ?? dims.faceDownOffset
+  const faceUpOffset = fuProp ?? dims.faceUpOffset
+  const cw = cardWidthOverride ?? dims.cardWidth
+  const ch = cardHeightOverride ?? dims.cardHeight
+  const height = getColumnHeight(cards, faceDownOffset, faceUpOffset, ch)
 
   return (
     <div
@@ -91,16 +155,16 @@ export default function Column({
           <div
             className="border border-indigo-500/20 flex items-center justify-center"
             style={{
-              width: dims.cardWidth,
+              width: cw,
               aspectRatio: '5 / 7',
-              borderRadius: Math.round(dims.cardWidth * 0.094),
+              borderRadius: Math.round(cw * 0.094),
               background: isDragTarget
                 ? 'linear-gradient(135deg, rgba(0,240,255,0.08) 0%, rgba(0,240,255,0.03) 100%)'
                 : 'rgba(99,102,241,0.03)',
               borderColor: isDragTarget ? 'rgba(0,240,255,0.4)' : undefined,
             }}
           >
-            <span style={{ fontSize: Math.round(dims.cardWidth * 0.25), color: 'rgba(99,102,241,0.25)' }}>
+            <span style={{ fontSize: Math.round(cw * 0.25), color: 'rgba(99,102,241,0.25)' }}>
               ♠
             </span>
           </div>
@@ -112,14 +176,14 @@ export default function Column({
         <div className="relative w-full" style={{ minHeight: height }}>
           <AnimatePresence mode="sync">
             {cards.map((card, index) => {
-              const offset = getCardOffset(cards, index, dims.faceDownOffset, dims.faceUpOffset)
+              const offset = getCardOffset(cards, index, faceDownOffset, faceUpOffset)
               const isBlocked = card.faceUp && getValidRunFrom(cards, index) < (cards.length - index)
 
               return (
                 <Card
                   key={card.id}
                   card={card}
-                  cardWidth={dims.cardWidth}
+                  cardWidth={cw}
                   offset={offset}
                   zIndex={index}
                   isBlocked={isBlocked}
