@@ -1,0 +1,136 @@
+import { useCallback, useEffect, useRef } from 'react'
+import type { ColumnIndex } from '@/engine/types'
+import {
+  DEFAULT_DRAG_CONFIG,
+  createDragState,
+  pointerKindFromType,
+  stepDrag,
+  type DragCommand,
+  type DragConfig,
+  type DragState,
+} from './dragMachine'
+import { nearestColumn, type ColumnRect } from './hitTest'
+
+export interface DragTarget {
+  readonly cardIds: readonly string[]
+  readonly fromColumn: ColumnIndex
+  readonly count: number
+}
+
+export interface UsePointerDragOptions {
+  readonly config?: DragConfig
+  readonly getColumnRects: () => readonly ColumnRect[]
+  readonly onCommand: (command: DragCommand, state: DragState) => void
+  readonly enabled?: boolean
+}
+
+export interface PointerDragApi {
+  readonly onPointerDown: (event: React.PointerEvent, target: DragTarget) => void
+  readonly dragStateRef: React.RefObject<DragState>
+}
+
+export function usePointerDrag(options: UsePointerDragOptions): PointerDragApi {
+  const config = options.config ?? DEFAULT_DRAG_CONFIG
+  const enabled = options.enabled ?? true
+  const stateRef = useRef<DragState>(createDragState())
+  const optionsRef = useRef(options)
+
+  useEffect(() => {
+    optionsRef.current = options
+  })
+
+  const emit = useCallback((command: DragCommand, state: DragState) => {
+    optionsRef.current.onCommand(command, state)
+  }, [])
+
+  const apply = useCallback(
+    (event: Parameters<typeof stepDrag>[1]) => {
+      const step = stepDrag(stateRef.current, event, config)
+      stateRef.current = step.state
+      if (step.command.type !== 'none') {
+        emit(step.command, step.state)
+      }
+    },
+    [config, emit],
+  )
+
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      if (stateRef.current.phase !== 'pressed' && stateRef.current.phase !== 'dragging') {
+        return
+      }
+      if (stateRef.current.phase === 'pressed' || stateRef.current.phase === 'dragging') {
+        if (e.pointerId !== stateRef.current.pointerId) return
+      }
+      apply({
+        type: 'pointermove',
+        pointerId: e.pointerId,
+        point: { x: e.clientX, y: e.clientY },
+        time: e.timeStamp,
+      })
+    }
+
+    const onUp = (e: PointerEvent) => {
+      if (stateRef.current.phase !== 'pressed' && stateRef.current.phase !== 'dragging') {
+        return
+      }
+      if (
+        (stateRef.current.phase === 'pressed' || stateRef.current.phase === 'dragging') &&
+        e.pointerId !== stateRef.current.pointerId
+      ) {
+        return
+      }
+      const rects = optionsRef.current.getColumnRects()
+      const targetColumn = nearestColumn({ x: e.clientX, y: e.clientY }, rects)
+      apply({
+        type: 'pointerup',
+        pointerId: e.pointerId,
+        point: { x: e.clientX, y: e.clientY },
+        time: e.timeStamp,
+        targetColumn,
+      })
+      // Settle after drop/tap
+      apply({ type: 'settle' })
+    }
+
+    const onCancel = (e: PointerEvent) => {
+      apply({
+        type: 'pointercancel',
+        pointerId: e.pointerId,
+        time: e.timeStamp,
+      })
+      apply({ type: 'settle' })
+    }
+
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onCancel)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onCancel)
+    }
+  }, [apply])
+
+  const onPointerDown = useCallback(
+    (event: React.PointerEvent, target: DragTarget) => {
+      if (!enabled) return
+      if (event.button !== 0) return
+      event.preventDefault()
+      event.currentTarget.setPointerCapture?.(event.pointerId)
+      apply({
+        type: 'pointerdown',
+        pointerId: event.pointerId,
+        pointerKind: pointerKindFromType(event.pointerType),
+        point: { x: event.clientX, y: event.clientY },
+        time: event.timeStamp,
+        cardIds: target.cardIds,
+        fromColumn: target.fromColumn,
+        count: target.count,
+      })
+    },
+    [apply, enabled],
+  )
+
+  return { onPointerDown, dragStateRef: stateRef }
+}

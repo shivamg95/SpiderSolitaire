@@ -1,0 +1,113 @@
+.card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: calc(var(--radius-sm) + 2px);
+  transform-origin: center top;
+  will-change: transform;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  filter: drop-shadow(var(--shadow-card));
+}
+
+.card--dragging {
+  cursor: grabbing;
+  filter: drop-shadow(var(--shadow-lift));
+  will-change: transform;
+}
+
+.card--hint {
+  box-shadow:
+    0 0 0 2px var(--neon),
+    0 0 18px var(--neon-glow);
+}
+
+.card--selected {
+  box-shadow:
+    0 0 0 2px var(--neon-2),
+    0 0 16px color-mix(in srgb, var(--neon-2) 45%, transparent);
+}
+
+.card--dimmed {
+  pointer-events: none;
+}
+
+.card-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--glass-border) 80%, #fff 10%);
+  background: var(--card-face);
+}
+
+.card--down .card-inner {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--neon) 35%, transparent);
+}
+
+.card-face {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  color: var(--card-face-ink);
+  background: linear-gradient(160deg, #ffffff 0%, var(--card-face) 100%);
+}
+
+.card-face--red {
+  color: #d11f4a;
+}
+
+.card-index {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  font-weight: 700;
+  font-size: clamp(0.65rem, 2.2vw, 0.95rem);
+  font-variant-numeric: tabular-nums;
+}
+
+.card-index--tl {
+  top: 4%;
+  left: 6%;
+}
+
+.card-index--br {
+  right: 6%;
+  bottom: 4%;
+  transform: rotate(180deg);
+}
+
+.card-suit-sm {
+  width: 0.85em;
+  height: 0.85em;
+  margin-top: 1px;
+}
+
+.card-suit-lg {
+  position: absolute;
+  inset: 28% 22%;
+  width: auto;
+  height: auto;
+  opacity: 0.92;
+}
+
+.card--compressed .card-suit-lg {
+  display: none;
+}
+
+.card-back {
+  width: 100%;
+  height: 100%;
+  background: var(--card-back-0);
+}
+
+.card-back-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}

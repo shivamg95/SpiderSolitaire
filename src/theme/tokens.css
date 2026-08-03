@@ -1,0 +1,87 @@
+:root,
+:root[data-theme='midnight'] {
+  color-scheme: dark;
+  --felt-0: #070b14;
+  --felt-1: #0e1628;
+  --felt-2: #13203a;
+  --neon: #2de2e6;
+  --neon-2: #ff2a6d;
+  --neon-glow: color-mix(in srgb, var(--neon) 40%, transparent);
+  --text: #e8f1ff;
+  --muted: #8da0c0;
+  --danger: #ff4d6d;
+  --success: #3dffb5;
+  --glass: color-mix(in srgb, #12203a 55%, transparent);
+  --panel: color-mix(in srgb, #0e1628 75%, transparent);
+  --glass-border: color-mix(in srgb, var(--neon) 28%, transparent);
+  --card-face: #f4f7ff;
+  --card-face-ink: #101826;
+  --card-back-0: #0b1324;
+  --card-back-1: #152544;
+  --shadow-card: 0 10px 28px rgba(0, 0, 0, 0.45);
+  --shadow-lift: 0 18px 40px rgba(0, 0, 0, 0.55);
+  --radius: 14px;
+  --radius-sm: 10px;
+  --pad: 12px;
+  --spring-stiffness: 520;
+  --spring-damping: 32;
+  --felt-gradient: radial-gradient(
+    1200px 800px at 18% 0%,
+    var(--felt-2) 0%,
+    var(--felt-0) 58%
+  );
+}
+
+:root[data-theme='aurora'] {
+  --felt-0: #071018;
+  --felt-1: #0c1f28;
+  --felt-2: #12363a;
+  --neon: #7ef9c5;
+  --neon-2: #8b7bff;
+  --neon-glow: color-mix(in srgb, var(--neon) 38%, transparent);
+  --text: #e9fff7;
+  --muted: #8fb4aa;
+  --glass: color-mix(in srgb, #0f2a30 58%, transparent);
+  --glass-border: color-mix(in srgb, var(--neon) 26%, transparent);
+  --card-face: #f2fffa;
+  --card-face-ink: #0d1c1a;
+  --card-back-0: #0a1c22;
+  --card-back-1: #163a42;
+  --felt-gradient: radial-gradient(1100px 780px at 70% 8%, #1a3f48 0%, var(--felt-0) 60%);
+}
+
+:root[data-theme='ember'] {
+  --felt-0: #120808;
+  --felt-1: #1c0f0c;
+  --felt-2: #3a1810;
+  --neon: #ffb347;
+  --neon-2: #ff4d3a;
+  --neon-glow: color-mix(in srgb, var(--neon) 36%, transparent);
+  --text: #fff1e6;
+  --muted: #c4a08f;
+  --glass: color-mix(in srgb, #2a1410 58%, transparent);
+  --glass-border: color-mix(in srgb, var(--neon) 28%, transparent);
+  --card-face: #fff7f0;
+  --card-face-ink: #1a100c;
+  --card-back-0: #1a0d0a;
+  --card-back-1: #3a1a12;
+  --felt-gradient: radial-gradient(1150px 820px at 30% 0%, #4a1e14 0%, var(--felt-0) 55%);
+}
+
+:root[data-theme='mono'] {
+  --felt-0: #0a0a0c;
+  --felt-1: #141418;
+  --felt-2: #22222a;
+  --neon: #e8e8f0;
+  --neon-2: #9aa0b4;
+  --neon-glow: color-mix(in srgb, var(--neon) 22%, transparent);
+  --text: #f2f2f6;
+  --muted: #9a9aa8;
+  --glass: color-mix(in srgb, #1a1a20 62%, transparent);
+  --glass-border: color-mix(in srgb, var(--neon) 18%, transparent);
+  --card-face: #f7f7fa;
+  --card-face-ink: #121216;
+  --card-back-0: #121218;
+  --card-back-1: #2a2a34;
+  --felt-gradient: radial-gradient(1000px 700px at 50% 0%, #2a2a34 0%, var(--felt-0) 62%);
+}
