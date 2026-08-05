@@ -8,6 +8,7 @@ import { useUiStore } from '@/state/uiStore'
 export function SettingsPanel() {
   const open = useUiStore((s) => s.openPanel === 'settings')
   const closePanel = useUiStore((s) => s.closePanel)
+  const openPanelById = useUiStore((s) => s.openPanelById)
   const difficulty = useSettingsStore((s) => s.difficulty)
   const setDifficulty = useSettingsStore((s) => s.setDifficulty)
   const theme = useSettingsStore((s) => s.theme)
@@ -103,6 +104,14 @@ export function SettingsPanel() {
         </button>
         <button type="button" onClick={() => newGame()}>
           New game
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            openPanelById('share')
+          }}
+        >
+          Share deal
         </button>
       </div>
     </Panel>

@@ -5,9 +5,7 @@ import { useMotionPreset } from '@/animation/useMotionPreset'
 import { CardLayer } from '@/components/cards/CardLayer'
 import { ColumnDropZones } from '@/components/board/ColumnDropZones'
 import type { ColumnDropZonesHandle } from '@/components/board/ColumnDropZones'
-import { Foundations } from '@/components/board/Foundations'
-import { Stock } from '@/components/board/Stock'
-import { TopBar } from '@/components/chrome/TopBar'
+import { SideRail } from '@/components/chrome/SideRail'
 import { usePointerDrag } from '@/interaction/usePointerDrag'
 import { useKeyboardShortcuts } from '@/interaction/useKeyboardShortcuts'
 import {
@@ -15,6 +13,7 @@ import {
   computeLayout,
   type ViewportSize,
 } from '@/layout/computeLayout'
+import { FOUNDATION_SLOTS } from '@/layout/constants'
 import { useGameStore } from '@/state/gameStore'
 import { useSettingsStore } from '@/state/settingsStore'
 import { useUiStore } from '@/state/uiStore'
@@ -42,9 +41,6 @@ export function Board() {
   const handle = useGameStore((s) => s.handle)
   const attemptMove = useGameStore((s) => s.attemptMove)
   const tapMove = useGameStore((s) => s.tapMove)
-  const dealStock = useGameStore((s) => s.dealStock)
-  const canDealStock = useGameStore((s) => s.canDealStock)
-  const dealsLeft = useGameStore((s) => s.dealsLeft)
   const movableLength = useGameStore((s) => s.movableLength)
 
   const selectedRun = useUiStore((s) => s.selectedRun)
@@ -66,12 +62,30 @@ export function Board() {
   const dropZonesRef = useRef<ColumnDropZonesHandle>(null)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const [draggingIds, setDraggingIds] = useState<ReadonlySet<string>>(new Set())
+  const [targetColumn, setTargetColumn] = useState<number | null>(null)
   const liftRef = useRef(0)
 
   useKeyboardShortcuts()
 
+  const emptyColumns = useMemo(() => {
+    const empty = new Set<number>()
+    for (let i = 0; i < handle.state.columns.length; i++) {
+      if ((handle.state.columns[i] ?? []).length === 0) empty.add(i)
+    }
+    return empty
+  }, [handle.state.columns])
+
+  const tableauHeight =
+    metrics.layoutMode === 'rail'
+      ? metrics.boardHeight - metrics.columnsY
+      : Math.max(0, metrics.railY - metrics.columnsY)
+
   const { onPointerDown } = usePointerDrag({
     getColumnRects: () => dropZonesRef.current?.getRects() ?? [],
+    maxDropDistance: () => metrics.cardWidth * 1.5,
+    onPointerMove: (_point, column) => {
+      setTargetColumn(column)
+    },
     onCommand: (command, state) => {
       if (command.type === 'startDrag') {
         liftRef.current = command.liftY
@@ -95,6 +109,7 @@ export function Board() {
         }
         setDraggingIds(new Set())
         setDragOffset({ x: 0, y: 0 })
+        setTargetColumn(null)
         liftRef.current = 0
       } else if (command.type === 'tap') {
         const from = command.fromColumn as ColumnIndex
@@ -106,11 +121,13 @@ export function Board() {
         tapMove(from, command.count)
         setDraggingIds(new Set())
         setDragOffset({ x: 0, y: 0 })
+        setTargetColumn(null)
         liftRef.current = 0
       } else if (command.type === 'cancel') {
         clearSelection()
         setDraggingIds(new Set())
         setDragOffset({ x: 0, y: 0 })
+        setTargetColumn(null)
         liftRef.current = 0
       }
     },
@@ -156,11 +173,7 @@ export function Board() {
     return ids
   }, [selectedRun])
 
-  const portraitNarrow = viewport.width < 900 && viewport.height > viewport.width
-  const boardHeight = Math.max(
-    200,
-    viewport.height - metrics.topBarHeight - metrics.padY * 2,
-  )
+  const foundationsFilled = handle.state.foundations.length
 
   return (
     <div
@@ -168,32 +181,30 @@ export function Board() {
       aria-hidden={panelOpen || undefined}
       inert={panelOpen || undefined}
     >
-      <TopBar />
-      {portraitNarrow ? <p className="rotate-hint">Rotate for a better view</p> : null}
+      <h1 className="sr-only">Spider Solitaire</h1>
       <div
         className="board"
         style={{
           ['--card-w' as string]: `${metrics.cardWidth}px`,
           ['--card-h' as string]: `${metrics.cardHeight}px`,
-          height: boardHeight,
+          height: metrics.boardHeight,
         }}
         onContextMenu={(e) => {
           e.preventDefault()
         }}
       >
-        <Foundations
-          filled={handle.state.foundations.length}
-          xs={metrics.foundationXs}
-          y={metrics.stockY}
-          width={metrics.cardWidth}
-          height={metrics.cardHeight}
-        />
+        <span className="foundation-live" aria-live="polite">
+          Foundations {foundationsFilled} of {FOUNDATION_SLOTS}
+        </span>
         <ColumnDropZones
           ref={dropZonesRef}
           columnXs={metrics.columnXs}
           columnsY={metrics.columnsY}
           cardWidth={metrics.cardWidth}
-          height={boardHeight - metrics.columnsY}
+          cardHeight={metrics.cardHeight}
+          height={tableauHeight}
+          emptyColumns={emptyColumns}
+          targetColumn={draggingIds.size > 0 ? targetColumn : null}
         />
         <CardLayer
           state={handle.state}
@@ -207,17 +218,10 @@ export function Board() {
           dragOffset={dragOffset}
           onCardPointerDown={onCardPointerDown}
         />
-        <Stock
-          dealsLeft={dealsLeft()}
-          x={metrics.stockX}
-          y={metrics.stockY}
-          width={metrics.cardWidth}
-          height={metrics.cardHeight}
-          disabled={panelOpen || !canDealStock()}
-          onDeal={() => {
-            if (panelOpen) return
-            dealStock()
-          }}
+        <SideRail
+          metrics={metrics}
+          foundationsFilled={foundationsFilled}
+          panelOpen={panelOpen}
         />
       </div>
     </div>

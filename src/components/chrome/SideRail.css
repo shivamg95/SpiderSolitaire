@@ -1,0 +1,156 @@
+.side-rail {
+  position: absolute;
+  z-index: 2500;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+  container-type: size;
+  container-name: rail;
+}
+
+.side-rail--bottom {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.25rem;
+  background: color-mix(in srgb, var(--panel) 55%, transparent);
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--neon) 18%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.side-rail__foundations {
+  flex: 0 0 auto;
+  pointer-events: none;
+}
+
+.side-rail__foundations--inline {
+  flex: 0 0 auto;
+  width: calc(var(--card-w, 72px) * 0.82 + 48px);
+  min-height: 1px;
+}
+
+.side-rail__middle {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  overflow: hidden;
+  pointer-events: auto;
+  /* Leave room for the deal deck at the bottom in rail mode */
+  padding-bottom: calc(var(--card-h, 100px) * 0.82 + 8px);
+}
+
+.side-rail--bottom .side-rail__middle {
+  flex-direction: row;
+  justify-content: center;
+  gap: 0.65rem;
+  padding-bottom: 0;
+  padding-right: calc(var(--card-w, 72px) * 0.82 + 8px);
+}
+
+.side-rail__stats {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.side-rail--bottom .side-rail__stats {
+  flex-direction: row;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.side-rail__stats em {
+  font-style: normal;
+  color: var(--neon);
+  font-weight: 700;
+  margin-right: 0.15rem;
+}
+
+.side-rail__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.side-rail--bottom .side-rail__actions {
+  flex-direction: row;
+}
+
+.side-rail__btn {
+  appearance: none;
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-content: center;
+  border: 1px solid color-mix(in srgb, var(--neon) 35%, transparent);
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  color: var(--text);
+  border-radius: 10px;
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.side-rail__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.side-rail__btn:not(:disabled):hover {
+  border-color: var(--neon);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--neon) 30%, transparent);
+}
+
+.side-rail__btn--menu {
+  font-size: 1.25rem;
+  letter-spacing: 0.04em;
+}
+
+.side-rail__stock {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.side-rail--bottom .side-rail__stock {
+  /* still absolute over the bar; Stock uses relative offsets */
+}
+
+/* Collapse stats when rail is short */
+@container rail (max-height: 320px) {
+  .side-rail:not(.side-rail--bottom) .side-rail__stats {
+    display: none;
+  }
+}
+
+@container rail (max-height: 180px) {
+  .side-rail:not(.side-rail--bottom) .side-rail__btn:not(.side-rail__btn--menu) {
+    display: none;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}

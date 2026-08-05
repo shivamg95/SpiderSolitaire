@@ -10,11 +10,17 @@ import {
   FACE_UP_FLOOR,
   FACE_UP_OVERLAP,
   FOUNDATION_SLOTS,
+  FOUNDATION_STEP_RATIO,
+  MAX_CARD_HEIGHT_RATIO,
   MAX_CARD_WIDTH,
   MIN_CARD_WIDTH,
   MIN_COLUMN_GAP,
-  STOCK_ROW_HEIGHT_RATIO,
-  TOP_BAR_HEIGHT,
+  MIN_FOUNDATION_STEP,
+  MIN_RAIL_WIDTH,
+  MAX_RAIL_WIDTH,
+  NARROW_LAYOUT_BREAKPOINT,
+  RAIL_CARD_SCALE,
+  RAIL_GAP,
 } from './constants'
 
 export interface ViewportSize {
@@ -29,8 +35,9 @@ export interface ViewportSize {
 export interface LayoutSettings {
   readonly padX?: number
   readonly padY?: number
-  readonly topBarHeight?: number
 }
+
+export type LayoutMode = 'rail' | 'bottom'
 
 export interface CardPlacement {
   readonly x: number
@@ -48,17 +55,32 @@ export interface BoardMetrics {
   readonly columnGap: number
   readonly padX: number
   readonly padY: number
-  readonly topBarHeight: number
-  readonly stockY: number
+  readonly boardHeight: number
+  readonly boardWidth: number
   readonly columnsY: number
   readonly columnWidth: number
   readonly columnXs: readonly number[]
-  readonly foundationXs: readonly number[]
+  readonly layoutMode: LayoutMode
+  readonly railX: number
+  readonly railY: number
+  readonly railWidth: number
+  readonly railHeight: number
+  readonly railCardWidth: number
+  readonly railCardHeight: number
+  readonly foundationX: number
+  readonly foundationYs: readonly number[]
+  readonly foundationStep: number
   readonly stockX: number
+  readonly stockY: number
 }
 
 function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n))
+}
+
+/** Left edge so a scaled card (transform-origin: center top) visually starts at `visualX`. */
+function scaledLeft(visualX: number, cardWidth: number, scale: number): number {
+  return visualX - (cardWidth * (1 - scale)) / 2
 }
 
 export function computeBoardMetrics(
@@ -68,43 +90,108 @@ export function computeBoardMetrics(
   const safeLeft = viewport.safeLeft ?? 0
   const safeRight = viewport.safeRight ?? 0
   const safeTop = viewport.safeTop ?? 0
+  const safeBottom = viewport.safeBottom ?? 0
   const padX = settings.padX ?? BOARD_PAD_X
   const padY = settings.padY ?? BOARD_PAD_Y
-  const topBarHeight = settings.topBarHeight ?? TOP_BAR_HEIGHT
 
-  const innerW = Math.max(0, viewport.width - safeLeft - safeRight - 2 * padX)
-  const gapGuess = Math.max(MIN_COLUMN_GAP, innerW * COLUMN_GAP_RATIO * 0.12)
-  let columnWidth = (innerW - (COLUMN_COUNT - 1) * gapGuess) / COLUMN_COUNT
+  const boardWidth = Math.max(0, viewport.width)
+  const boardHeight = Math.max(0, viewport.height)
+  const layoutMode: LayoutMode = boardWidth < NARROW_LAYOUT_BREAKPOINT ? 'bottom' : 'rail'
+
+  const innerW = Math.max(0, boardWidth - safeLeft - safeRight - 2 * padX)
+  const innerH = Math.max(0, boardHeight - safeTop - safeBottom - 2 * padY)
+
+  let railWidth: number
+  let railHeight: number
+  let tableauWidth: number
+  let tableauHeight: number
+
+  if (layoutMode === 'rail') {
+    const provisional =
+      (innerW - (COLUMN_COUNT + 1 - 1) * Math.max(MIN_COLUMN_GAP, innerW * 0.01)) /
+      (COLUMN_COUNT + 1)
+    railWidth = clamp(provisional, MIN_RAIL_WIDTH, MAX_RAIL_WIDTH)
+    railHeight = innerH
+    tableauWidth = Math.max(0, innerW - railWidth - RAIL_GAP)
+    tableauHeight = innerH
+  } else {
+    railWidth = innerW
+    const provisionalCardH = Math.min(
+      MAX_CARD_WIDTH / CARD_ASPECT,
+      innerH * MAX_CARD_HEIGHT_RATIO,
+    )
+    railHeight = clamp(provisionalCardH * RAIL_CARD_SCALE + padY, 64, 120)
+    tableauWidth = innerW
+    tableauHeight = Math.max(0, innerH - railHeight - RAIL_GAP)
+  }
+
+  const gapGuess = Math.max(MIN_COLUMN_GAP, tableauWidth * COLUMN_GAP_RATIO * 0.12)
+  let columnWidth = (tableauWidth - (COLUMN_COUNT - 1) * gapGuess) / COLUMN_COUNT
   columnWidth = clamp(columnWidth, MIN_CARD_WIDTH, MAX_CARD_WIDTH)
 
-  const columnGap =
+  let columnGap =
     COLUMN_COUNT > 1
       ? Math.max(
           MIN_COLUMN_GAP,
-          (innerW - columnWidth * COLUMN_COUNT) / (COLUMN_COUNT - 1),
+          (tableauWidth - columnWidth * COLUMN_COUNT) / (COLUMN_COUNT - 1),
         )
       : 0
 
-  // Recompute so columns exactly fill width without horizontal scroll.
-  columnWidth = (innerW - (COLUMN_COUNT - 1) * columnGap) / COLUMN_COUNT
+  columnWidth = (tableauWidth - (COLUMN_COUNT - 1) * columnGap) / COLUMN_COUNT
   columnWidth = clamp(columnWidth, MIN_CARD_WIDTH, MAX_CARD_WIDTH)
 
-  const cardWidth = columnWidth
-  const cardHeight = cardWidth / CARD_ASPECT
+  let cardWidth = columnWidth
+  let cardHeight = cardWidth / CARD_ASPECT
+  const maxH = tableauHeight * MAX_CARD_HEIGHT_RATIO
+  if (cardHeight > maxH && maxH > 0) {
+    cardHeight = maxH
+    cardWidth = cardHeight * CARD_ASPECT
+    columnGap =
+      COLUMN_COUNT > 1
+        ? Math.max(
+            MIN_COLUMN_GAP,
+            (tableauWidth - cardWidth * COLUMN_COUNT) / (COLUMN_COUNT - 1),
+          )
+        : 0
+  }
 
   const originX = safeLeft + padX
+  const columnsY = safeTop + padY
   const columnXs = Array.from({ length: COLUMN_COUNT }, (_, i) => {
     return originX + i * (cardWidth + columnGap)
   })
 
-  const stockY = safeTop + topBarHeight + padY
-  const columnsY = stockY + cardHeight * STOCK_ROW_HEIGHT_RATIO
+  const railCardWidth = cardWidth * RAIL_CARD_SCALE
+  const railCardHeight = cardHeight * RAIL_CARD_SCALE
+  const foundationStep = Math.max(MIN_FOUNDATION_STEP, cardHeight * FOUNDATION_STEP_RATIO)
 
-  const foundationStart =
-    originX + (COLUMN_COUNT - FOUNDATION_SLOTS) * (cardWidth + columnGap)
-  const foundationXs = Array.from({ length: FOUNDATION_SLOTS }, (_, i) => {
-    return foundationStart + i * (cardWidth + columnGap)
-  })
+  let railX: number
+  let railY: number
+  let foundationX: number
+  let stockX: number
+  let stockY: number
+  let foundationYs: number[]
+
+  if (layoutMode === 'rail') {
+    railX = originX + tableauWidth + RAIL_GAP
+    railY = columnsY
+    foundationX = railX + Math.max(0, (railWidth - railCardWidth) / 2)
+    stockX = foundationX
+    stockY = columnsY + tableauHeight - railCardHeight
+    foundationYs = Array.from({ length: FOUNDATION_SLOTS }, (_, f) => {
+      return columnsY + f * foundationStep
+    })
+  } else {
+    railX = originX
+    railY = columnsY + tableauHeight + RAIL_GAP
+    foundationX = railX
+    stockX = railX + railWidth - railCardWidth
+    stockY = railY + Math.max(0, (railHeight - railCardHeight) / 2)
+    // Horizontal stack for bottom bar: offset each completed set slightly right + down
+    foundationYs = Array.from({ length: FOUNDATION_SLOTS }, (_, f) => {
+      return stockY + f * Math.min(foundationStep, 8)
+    })
+  }
 
   return {
     cardWidth,
@@ -112,13 +199,23 @@ export function computeBoardMetrics(
     columnGap,
     padX,
     padY,
-    topBarHeight,
-    stockY,
+    boardHeight,
+    boardWidth,
     columnsY,
-    columnWidth,
+    columnWidth: cardWidth,
     columnXs,
-    foundationXs,
-    stockX: originX,
+    layoutMode,
+    railX,
+    railY,
+    railWidth,
+    railHeight,
+    railCardWidth,
+    railCardHeight,
+    foundationX,
+    foundationYs,
+    foundationStep,
+    stockX,
+    stockY,
   }
 }
 
@@ -150,7 +247,6 @@ function stackOffsets(
 
   const floorSpan = floorOffsets[floorOffsets.length - 1]! + cardHeight
   if (floorSpan >= availableHeight) {
-    // Rank-strip: pack to floor (or slightly under if still overflowing).
     const scale =
       availableHeight > cardHeight
         ? (availableHeight - cardHeight) / (floorSpan - cardHeight)
@@ -161,7 +257,6 @@ function stackOffsets(
     }
   }
 
-  // Interpolate between ideal and floor to fit.
   const idealExtra = stackSpan - cardHeight
   const floorExtra = floorSpan - cardHeight
   const targetExtra = availableHeight - cardHeight
@@ -183,9 +278,14 @@ export function computeLayout(
   const metrics = computeBoardMetrics(viewport, settings)
   const map = new Map<CardId, CardPlacement>()
   const safeBottom = viewport.safeBottom ?? 0
+
   const availableColumnHeight = Math.max(
     metrics.cardHeight,
-    viewport.height - metrics.columnsY - safeBottom - metrics.padY,
+    (metrics.layoutMode === 'rail'
+      ? metrics.boardHeight - metrics.columnsY
+      : metrics.railY - metrics.columnsY) -
+      safeBottom -
+      metrics.padY,
   )
 
   // Columns
@@ -211,36 +311,43 @@ export function computeLayout(
     }
   }
 
-  // Stock piles (stacked slightly)
+  // Stock piles (stacked slightly upward for thickness)
   const stockDeals = state.stock.length
+  const stockVisualX = metrics.stockX
+  const stockLeft = scaledLeft(stockVisualX, metrics.cardWidth, RAIL_CARD_SCALE)
   for (let d = 0; d < stockDeals; d++) {
     const deal = state.stock[d]!
     for (let i = 0; i < deal.length; i++) {
       const card = deal[i]!
       map.set(card.id, {
-        x: metrics.stockX + d * 2,
-        y: metrics.stockY + d * 1.5,
+        x: stockLeft + d * 1.5,
+        y: metrics.stockY - d * 2,
         z: 1000 + d * 10 + i,
         rotate: 0,
-        scale: 1,
+        scale: RAIL_CARD_SCALE,
         faceUp: false,
         compressed: false,
       })
     }
   }
 
-  // Foundations — show top card of each completed run
+  // Foundations — stacked downward (rail) or slightly offset (bottom bar)
   for (let f = 0; f < state.foundations.length; f++) {
     const run = state.foundations[f] ?? []
-    const fx = metrics.foundationXs[f] ?? metrics.stockX
+    const fy = metrics.foundationYs[f] ?? metrics.columnsY
+    const fx =
+      metrics.layoutMode === 'bottom'
+        ? metrics.foundationX + f * Math.max(8, metrics.foundationStep * 0.6)
+        : metrics.foundationX
+    const left = scaledLeft(fx, metrics.cardWidth, RAIL_CARD_SCALE)
     for (let i = 0; i < run.length; i++) {
       const card = run[i]!
       map.set(card.id, {
-        x: fx,
-        y: metrics.stockY,
+        x: left,
+        y: fy,
         z: 2000 + f * 20 + i,
         rotate: 0,
-        scale: 1,
+        scale: RAIL_CARD_SCALE,
         faceUp: true,
         compressed: false,
       })

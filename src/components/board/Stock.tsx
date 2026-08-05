@@ -7,6 +7,7 @@ export interface StockProps {
   readonly width: number
   readonly height: number
   readonly disabled?: boolean
+  readonly pulse?: boolean
   readonly onDeal: () => void
 }
 
@@ -17,12 +18,17 @@ export function Stock({
   width,
   height,
   disabled = false,
+  pulse = false,
   onDeal,
 }: StockProps) {
   return (
     <button
       type="button"
-      className={clsx('stock', disabled && 'stock--disabled')}
+      className={clsx(
+        'stock',
+        disabled && 'stock--disabled',
+        pulse && !disabled && dealsLeft > 0 && 'stock--pulse',
+      )}
       style={{ left: x, top: y, width, height }}
       disabled={disabled || dealsLeft === 0}
       onClick={() => {

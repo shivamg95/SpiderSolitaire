@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Board } from '@/components/board/Board'
+import { SettingsPanel } from '@/components/panels/SettingsPanel'
 import { ShareDealPanel } from '@/components/panels/ShareDealPanel'
 import { WinPanel } from '@/components/panels/WinPanel'
 import { parseDealFromSearch } from '@/features/share/dealUrl'
@@ -25,6 +26,7 @@ export default function App() {
   return (
     <>
       <Board />
+      <SettingsPanel />
       <ShareDealPanel />
       <WinPanel />
     </>

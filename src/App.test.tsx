@@ -11,6 +11,7 @@ vi.mock('@/state/gameStore', async () => {
 describe('App', () => {
   it('renders the Spider board chrome', () => {
     render(<App />)
-    expect(screen.getByText('Spider')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /spider solitaire/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /deal stock/i })).toBeInTheDocument()
   })
 })

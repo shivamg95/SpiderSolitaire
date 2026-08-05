@@ -17,7 +17,23 @@ export const MIN_CARD_WIDTH = 42
 export const COLUMN_GAP_RATIO = 0.08
 export const MIN_COLUMN_GAP = 4
 
-export const TOP_BAR_HEIGHT = 56
-export const STOCK_ROW_HEIGHT_RATIO = 1.15
 export const BOARD_PAD_X = 12
 export const BOARD_PAD_Y = 8
+
+/** Gap between the tableau and the right (or bottom) rail. */
+export const RAIL_GAP = 12
+export const MIN_RAIL_WIDTH = 56
+export const MAX_RAIL_WIDTH = 104
+
+/** Foundation/stock cards are indicators — slightly smaller than play cards. */
+export const RAIL_CARD_SCALE = 0.82
+
+/** Downward offset per completed foundation set (fraction of card height). */
+export const FOUNDATION_STEP_RATIO = 0.15
+export const MIN_FOUNDATION_STEP = 10
+
+/** Cap card height so a short fan always fits on small viewports. */
+export const MAX_CARD_HEIGHT_RATIO = 0.32
+
+/** Switch to a bottom-bar rail below this viewport width. */
+export const NARROW_LAYOUT_BREAKPOINT = 560

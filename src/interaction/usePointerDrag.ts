@@ -20,7 +20,14 @@ export interface DragTarget {
 export interface UsePointerDragOptions {
   readonly config?: DragConfig
   readonly getColumnRects: () => readonly ColumnRect[]
+  /** Max horizontal distance from column center to accept a drop (px). */
+  readonly maxDropDistance?: number | (() => number)
   readonly onCommand: (command: DragCommand, state: DragState) => void
+  /** Called on every pointer move while pressed/dragging (for hover highlight). */
+  readonly onPointerMove?: (
+    point: { x: number; y: number },
+    targetColumn: number | null,
+  ) => void
   readonly enabled?: boolean
 }
 
@@ -55,6 +62,12 @@ export function usePointerDrag(options: UsePointerDragOptions): PointerDragApi {
   )
 
   useEffect(() => {
+    const resolveMaxDistance = () => {
+      const raw = optionsRef.current.maxDropDistance
+      if (raw == null) return Infinity
+      return typeof raw === 'function' ? raw() : raw
+    }
+
     const onMove = (e: PointerEvent) => {
       if (stateRef.current.phase !== 'pressed' && stateRef.current.phase !== 'dragging') {
         return
@@ -62,12 +75,16 @@ export function usePointerDrag(options: UsePointerDragOptions): PointerDragApi {
       if (stateRef.current.phase === 'pressed' || stateRef.current.phase === 'dragging') {
         if (e.pointerId !== stateRef.current.pointerId) return
       }
+      const point = { x: e.clientX, y: e.clientY }
       apply({
         type: 'pointermove',
         pointerId: e.pointerId,
-        point: { x: e.clientX, y: e.clientY },
+        point,
         time: e.timeStamp,
       })
+      const rects = optionsRef.current.getColumnRects()
+      const targetColumn = nearestColumn(point, rects, resolveMaxDistance())
+      optionsRef.current.onPointerMove?.(point, targetColumn)
     }
 
     const onUp = (e: PointerEvent) => {
@@ -81,7 +98,11 @@ export function usePointerDrag(options: UsePointerDragOptions): PointerDragApi {
         return
       }
       const rects = optionsRef.current.getColumnRects()
-      const targetColumn = nearestColumn({ x: e.clientX, y: e.clientY }, rects)
+      const targetColumn = nearestColumn(
+        { x: e.clientX, y: e.clientY },
+        rects,
+        resolveMaxDistance(),
+      )
       apply({
         type: 'pointerup',
         pointerId: e.pointerId,

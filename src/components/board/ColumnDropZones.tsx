@@ -1,4 +1,5 @@
 import { forwardRef, useImperativeHandle, useRef } from 'react'
+import clsx from 'clsx'
 import { COLUMN_COUNT } from '@/layout/constants'
 import type { ColumnRect } from '@/interaction/hitTest'
 
@@ -10,11 +11,25 @@ export interface ColumnDropZonesProps {
   readonly columnXs: readonly number[]
   readonly columnsY: number
   readonly cardWidth: number
+  readonly cardHeight: number
   readonly height: number
+  readonly emptyColumns?: ReadonlySet<number>
+  readonly targetColumn?: number | null
 }
 
 export const ColumnDropZones = forwardRef<ColumnDropZonesHandle, ColumnDropZonesProps>(
-  function ColumnDropZones({ columnXs, columnsY, cardWidth, height }, ref) {
+  function ColumnDropZones(
+    {
+      columnXs,
+      columnsY,
+      cardWidth,
+      cardHeight,
+      height,
+      emptyColumns,
+      targetColumn = null,
+    },
+    ref,
+  ) {
     const nodeRefs = useRef<(HTMLDivElement | null)[]>([])
 
     useImperativeHandle(ref, () => ({
@@ -38,22 +53,31 @@ export const ColumnDropZones = forwardRef<ColumnDropZonesHandle, ColumnDropZones
 
     return (
       <div className="column-drop-zones" aria-hidden>
-        {Array.from({ length: COLUMN_COUNT }, (_, i) => (
-          <div
-            key={i}
-            className="column-drop-zone"
-            ref={(el) => {
-              nodeRefs.current[i] = el
-            }}
-            data-column={i}
-            style={{
-              left: columnXs[i] ?? 0,
-              top: columnsY,
-              width: cardWidth,
-              height,
-            }}
-          />
-        ))}
+        {Array.from({ length: COLUMN_COUNT }, (_, i) => {
+          const empty = emptyColumns?.has(i) ?? false
+          const targeted = targetColumn === i
+          return (
+            <div
+              key={i}
+              className={clsx(
+                'column-drop-zone',
+                empty && 'column-drop-zone--empty',
+                targeted && 'column-drop-zone--target',
+              )}
+              ref={(el) => {
+                nodeRefs.current[i] = el
+              }}
+              data-column={i}
+              style={{
+                left: columnXs[i] ?? 0,
+                top: columnsY,
+                width: cardWidth,
+                height,
+                ['--empty-h' as string]: `${cardHeight}px`,
+              }}
+            />
+          )
+        })}
       </div>
     )
   },
