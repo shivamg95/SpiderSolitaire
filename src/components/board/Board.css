@@ -12,6 +12,15 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+.board-shell--modal-open {
+  pointer-events: none;
+  user-select: none;
+}
+
+.board-shell--modal-open .top-bar {
+  pointer-events: none;
+}
+
 .board {
   position: relative;
   flex: 1;
@@ -50,6 +59,7 @@
 }
 
 .stock {
+  z-index: 3000;
   pointer-events: auto;
   display: grid;
   place-content: center;
@@ -57,6 +67,8 @@
   color: var(--text);
   cursor: pointer;
   border-style: solid;
+  background: color-mix(in srgb, var(--glass) 18%, transparent);
+  text-shadow: 0 1px 6px color-mix(in srgb, #02060f 80%, transparent);
 }
 
 .stock--disabled {
@@ -83,6 +95,8 @@
   pointer-events: none;
 }
 
-.card-layer .card {
+/* Only playable column cards capture input; stock/foundation cards
+   must not block the Stock deal button underneath. */
+.card-layer .card.card--interactive {
   pointer-events: auto;
 }

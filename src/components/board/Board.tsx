@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import clsx from 'clsx'
 import type { Card as CardModel, ColumnIndex } from '@/engine/types'
 import { useMotionPreset } from '@/animation/useMotionPreset'
 import { CardLayer } from '@/components/cards/CardLayer'
@@ -45,13 +46,14 @@ export function Board() {
   const canDealStock = useGameStore((s) => s.canDealStock)
   const dealsLeft = useGameStore((s) => s.dealsLeft)
   const movableLength = useGameStore((s) => s.movableLength)
-  const bootstrap = useGameStore((s) => s.newGame)
 
   const selectedRun = useUiStore((s) => s.selectedRun)
   const setSelectedRun = useUiStore((s) => s.setSelectedRun)
   const clearSelection = useUiStore((s) => s.clearSelection)
   const hintMove = useUiStore((s) => s.hintMove)
+  const openPanel = useUiStore((s) => s.openPanel)
   const reducedMotion = useSettingsStore((s) => s.reducedMotion)
+  const panelOpen = openPanel !== null
 
   const viewport = useViewport()
   const preset = useMotionPreset(reducedMotion)
@@ -65,13 +67,6 @@ export function Board() {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const [draggingIds, setDraggingIds] = useState<ReadonlySet<string>>(new Set())
   const liftRef = useRef(0)
-  const booted = useRef(false)
-
-  useEffect(() => {
-    if (booted.current) return
-    booted.current = true
-    bootstrap()
-  }, [bootstrap])
 
   useKeyboardShortcuts()
 
@@ -128,6 +123,7 @@ export function Board() {
       column: number,
       indexInColumn: number,
     ) => {
+      if (panelOpen) return
       const col = handle.state.columns[column]
       if (!col) return
       const max = movableLength(column)
@@ -141,7 +137,7 @@ export function Board() {
         count,
       })
     },
-    [handle.state.columns, movableLength, onPointerDown],
+    [handle.state.columns, movableLength, onPointerDown, panelOpen],
   )
 
   const hintCardIds = useMemo(() => {
@@ -167,7 +163,11 @@ export function Board() {
   )
 
   return (
-    <div className="board-shell">
+    <div
+      className={clsx('board-shell', panelOpen && 'board-shell--modal-open')}
+      aria-hidden={panelOpen || undefined}
+      inert={panelOpen || undefined}
+    >
       <TopBar />
       {portraitNarrow ? <p className="rotate-hint">Rotate for a better view</p> : null}
       <div
@@ -188,17 +188,6 @@ export function Board() {
           width={metrics.cardWidth}
           height={metrics.cardHeight}
         />
-        <Stock
-          dealsLeft={dealsLeft()}
-          x={metrics.stockX}
-          y={metrics.stockY}
-          width={metrics.cardWidth}
-          height={metrics.cardHeight}
-          disabled={!canDealStock()}
-          onDeal={() => {
-            dealStock()
-          }}
-        />
         <ColumnDropZones
           ref={dropZonesRef}
           columnXs={metrics.columnXs}
@@ -217,6 +206,18 @@ export function Board() {
           draggingIds={draggingIds}
           dragOffset={dragOffset}
           onCardPointerDown={onCardPointerDown}
+        />
+        <Stock
+          dealsLeft={dealsLeft()}
+          x={metrics.stockX}
+          y={metrics.stockY}
+          width={metrics.cardWidth}
+          height={metrics.cardHeight}
+          disabled={panelOpen || !canDealStock()}
+          onDeal={() => {
+            if (panelOpen) return
+            dealStock()
+          }}
         />
       </div>
     </div>

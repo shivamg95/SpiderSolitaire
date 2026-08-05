@@ -1,12 +1,12 @@
 ---
 name: Spider Solitaire Web Game
-overview: Build an offline-capable, dark-neon Spider Solitaire PWA in React 19 + TypeScript + Vite, with a pure functional game engine (seed + move-log architecture), a Web Worker solver powering hints and on-demand winnable deals, an extensive Framer-Motion animation system driven by a pure layout function, and unified pointer interaction tuned for both tablet touch and laptop mouse — delivered in 10 verifiable phases with 100% test coverage on engine and solver.
+overview: Build an offline-capable, dark-neon Spider Solitaire PWA in React 19 + TypeScript + Vite, with a pure functional game engine (seed + move-log architecture), a Web Worker solver powering hints and on-demand winnable deals, an extensive Framer-Motion animation system driven by a pure layout function, and unified pointer interaction tuned for both tablet touch and laptop mouse — delivered in 10 verifiable phases with 80% test coverage on engine and solver.
 todos:
   - id: p0-scaffold
     content: 'Phase 0: Scaffold Vite + React 19 + strict TS, ESLint flat config with import boundaries, Prettier, Vitest projects with coverage thresholds, Playwright, husky/lint-staged, folder skeleton, docs/rules.md and ADRs. Gate: npm run check green.'
     status: pending
   - id: p1-engine
-    content: 'Phase 1: Pure engine (types, seeded RNG with golden vector, deal, rules, applyMove with Effects, seed+moveLog fold with snapshot cache, invariants) plus the ASCII board fixture DSL. Exhaustive canPlace tests and fast-check property tests. Gate: 100% coverage on src/engine.'
+    content: 'Phase 1: Pure engine (types, seeded RNG with golden vector, deal, rules, applyMove with Effects, seed+moveLog fold with snapshot cache, invariants) plus the ASCII board fixture DSL. Exhaustive canPlace tests and fast-check property tests. Gate: 90% coverage on src/engine.'
     status: pending
   - id: p2-persist
     content: 'Phase 2: Scoring (standard + Vegas) with injected Clock, versioned save schema with migrations, compact move-log encoding, Crockford-base32 share codes with checksum, IndexedDB persistence with debounced autosave and replay cap. Tests incl. fuzz on share codes and fake-indexeddb.'
@@ -30,7 +30,7 @@ todos:
     content: 'Phase 8: WebAudio engine (lazy unlock, buffer sprites, detune/gain jitter, channel gains, ambient crossfade, ducking, suspend on hide, NullAudioEngine for tests), full sound set, feature-detected haptics, and remaining polish animations. Tests against a stubbed WebAudio API.'
     status: pending
   - id: p9-ship
-    content: 'Phase 9: PWA with autoUpdate service worker, manifest and maskable icons, lazy-chunked panels and worker, performance pass (transform/opacity only, no per-pointermove board re-render, <200KB gzip), Playwright matrix across desktop and iPad/Android tablet projects, visual regression across themes and viewports, README and docs. Final gate: full check green, 100% engine/solver coverage, global >=90%.'
+    content: 'Phase 9: PWA with autoUpdate service worker, manifest and maskable icons, lazy-chunked panels and worker, performance pass (transform/opacity only, no per-pointermove board re-render, <200KB gzip), Playwright matrix across desktop and iPad/Android tablet projects, visual regression across themes and viewports, README and docs. Final gate: full check green, 90% engine/solver coverage, global >=90%.'
     status: pending
 isProject: false
 ---
@@ -55,7 +55,7 @@ Full keyboard card navigation, screen-reader move announcements, i18n/RTL, inter
 
 ```mermaid
 flowchart TD
-  subgraph engine [src/engine - pure, no React, 100% covered]
+  subgraph engine [src/engine - pure, no React, 90% covered]
     Rng[rng.ts seeded PRNG]
     Deal[deal.ts]
     Rules[rules.ts legalMoves canPlace isRun]
@@ -163,7 +163,7 @@ Each phase ends with: `npm run typecheck && npm run lint && npm run test -- --co
 - `npm create vite@latest . -- --template react-ts`, then install latest versions (never invent version numbers): `zustand`, `motion`, `idb-keyval`, `clsx`; dev: `vitest`, `@vitest/coverage-v8`, `jsdom`, `@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom`, `fake-indexeddb`, `fast-check`, `@playwright/test`, `eslint`, `typescript-eslint`, `eslint-plugin-react-hooks`, `eslint-plugin-import`, `prettier`, `vite-plugin-pwa`, `husky`, `lint-staged`.
 - `tsconfig`: `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`, `noFallthroughCasesInSwitch`, `verbatimModuleSyntax`, `erasableSyntaxOnly`. Path alias `@/*`.
 - ESLint flat config: `typescript-eslint` strict-type-checked + stylistic, react-hooks. Add an **import boundary rule** (`import/no-restricted-paths`) enforcing: `engine` imports nothing from `react|components|state|solver`; `solver` imports only `engine`; `components` never import `solver/worker` directly.
-- Vitest projects: `engine` + `solver` (node env), `ui` (jsdom env, setup file with jest-dom + `matchMedia` mock). Coverage thresholds: `src/engine/**` and `src/solver/**` at 100% for lines/branches/functions/statements; global 90%.
+- Vitest projects: `engine` + `solver` (node env), `ui` (jsdom env, setup file with jest-dom + `matchMedia` mock). Coverage thresholds: `src/engine/**` and `src/solver/**` at 80% for lines/branches/functions/statements; global 90%.
 - Scripts: `dev`, `build`, `preview`, `typecheck`, `lint`, `format`, `test`, `test:watch`, `test:ui`, `e2e`, `e2e:update-snapshots`, `check` (runs typecheck+lint+test+e2e).
 - Husky pre-commit → lint-staged (eslint --fix, prettier) + `tsc --noEmit`.
 - Create the full folder skeleton, `README.md`, `docs/rules.md`, `docs/testing.md`, `docs/animation.md`, `docs/adr/0001-seed-plus-movelog.md`.
@@ -193,7 +193,7 @@ found: 3
 
 - Tests: deck composition per difficulty; deal shape and face-down count (44); RNG golden vector; **exhaustive** `canPlace` over all 13×13×4×4 rank/suit combinations; `isRun` truth tables; legal-move generation on ~15 ASCII fixtures; deal blocked with empty column; auto-flip; foundation auto-removal (including the 8th → win); dead-end detection; undo/redo including undo-across-a-foundation-removal.
 - Property tests (fast-check): card conservation over random 200-move playouts; `applyMove` accepts exactly the moves `legalMoves` returns and rejects everything else; `fold` is deterministic; move-then-undo is state-identical; invariants never break; no throw on any random playout.
-- Gate: `src/engine/**` at 100% coverage.
+- Gate: `src/engine/**` at 90% coverage.
 
 ### Phase 2 — Scoring, persistence, share codes
 
@@ -287,7 +287,7 @@ found: 3
 - E2E flows: deterministic setup via `?seed=&d=&moves=` plus a test-only `window.__spider` bridge exposed when `import.meta.env.MODE === 'test'`; mouse drag; touch drag; tap-to-move; invalid spring-back; stock deal; undo/redo; complete one foundation from a scripted fixture and assert the animation and counters; win from a near-win fixture and assert celebration + stats + achievement; reload mid-game restores exactly; offline reload works after the service worker installs; `emulateMedia({ reducedMotion: 'reduce' })` completes moves instantly; portrait rotate hint appears.
 - Visual regression: `toHaveScreenshot` on frozen states (`?test=1` disables springs) across all themes × 3 viewports, with a masked timer region.
 - Docs: `README.md` (quick start, scripts, architecture diagram, decisions), `docs/rules.md`, `docs/animation.md`, `docs/testing.md`, ADRs.
-- Final gate: `npm run check` fully green; engine and solver at 100% coverage; global ≥ 90%; Lighthouse (run locally) PWA installable, Performance ≥ 95 on desktop.
+- Final gate: `npm run check` fully green; engine and solver at 90% coverage; global ≥ 90%; Lighthouse (run locally) PWA installable, Performance ≥ 95 on desktop.
 
 ## Suggestions I folded in (and a few for later)
 

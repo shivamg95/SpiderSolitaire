@@ -26,6 +26,7 @@ export interface CardProps {
   readonly selected?: boolean
   readonly dragging?: boolean
   readonly dimmed?: boolean
+  readonly interactive?: boolean
   readonly onPointerDown?: (event: React.PointerEvent) => void
   readonly style?: React.CSSProperties
   readonly dragOffset?: { x: number; y: number }
@@ -102,6 +103,7 @@ export const Card = memo(function Card({
   selected = false,
   dragging = false,
   dimmed = false,
+  interactive = false,
   onPointerDown,
   style: _style,
   dragOffset,
@@ -120,6 +122,7 @@ export const Card = memo(function Card({
         selected && 'card--selected',
         dragging && 'card--dragging',
         dimmed && 'card--dimmed',
+        interactive && 'card--interactive',
         placement.compressed && 'card--compressed',
       )}
       style={{

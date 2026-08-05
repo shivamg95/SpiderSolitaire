@@ -1,0 +1,153 @@
+.panel-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(2 6 15 / 78%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.panel {
+  position: relative;
+  z-index: 1;
+  width: min(420px, 100%);
+  max-height: min(90dvh, 720px);
+  overflow: auto;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--neon) 35%, transparent);
+  background: color-mix(in srgb, #0a1224 94%, var(--panel));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--neon) 12%, transparent),
+    0 18px 48px rgb(0 0 0 / 55%),
+    0 0 40px color-mix(in srgb, var(--neon) 18%, transparent);
+  color: var(--text);
+  pointer-events: auto;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--neon) 22%, transparent);
+}
+
+.panel-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  letter-spacing: 0.04em;
+}
+
+.panel-close {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.15rem 0.4rem;
+}
+
+.panel-close:hover {
+  color: var(--text);
+}
+
+.panel-body {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.settings-row,
+.share-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+}
+
+.settings-row--check {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.settings-row select,
+.share-row input {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--neon) 30%, transparent);
+  background: color-mix(in srgb, var(--glass) 50%, transparent);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 0.45rem 0.65rem;
+  font: inherit;
+}
+
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.settings-actions button,
+.share-row button {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--neon) 35%, transparent);
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 0.4rem 0.75rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.settings-actions button:hover,
+.share-row button:hover {
+  border-color: var(--neon);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--neon) 28%, transparent);
+}
+
+.share-lead {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.share-qr {
+  align-self: center;
+  width: min(220px, 70vw);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--neon) 28%, transparent);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--neon) 20%, transparent);
+}
+
+.share-qr svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.share-row {
+  display: flex;
+  gap: 0.45rem;
+}
+
+.share-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.win-copy {
+  margin: 0;
+  color: var(--muted);
+}

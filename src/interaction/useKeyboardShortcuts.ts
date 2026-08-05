@@ -15,17 +15,21 @@ export function useKeyboardShortcuts(): void {
       if (isTypingTarget(e.target)) return
       const meta = e.metaKey || e.ctrlKey
       const key = e.key.toLowerCase()
+      const panelOpen = useUiStore.getState().openPanel !== null
+
+      if (e.key === 'Escape') {
+        useUiStore.getState().closePanel()
+        useUiStore.getState().clearSelection()
+        return
+      }
+
+      // While a modal is open, only Escape may act on the game chrome.
+      if (panelOpen) return
 
       if (meta && key === 'z') {
         e.preventDefault()
         if (e.shiftKey) useGameStore.getState().redo()
         else useGameStore.getState().undo()
-        return
-      }
-
-      if (e.key === 'Escape') {
-        useUiStore.getState().closePanel()
-        useUiStore.getState().clearSelection()
         return
       }
 

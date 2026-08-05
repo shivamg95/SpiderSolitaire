@@ -2,6 +2,7 @@ import clsx from 'clsx'
 import { useEffect, useState } from 'react'
 import { useGameStore } from '@/state/gameStore'
 import { useSettingsStore } from '@/state/settingsStore'
+import { useUiStore } from '@/state/uiStore'
 import { THEMES, type ThemeId } from '@/theme/themes'
 import './TopBar.css'
 
@@ -30,6 +31,7 @@ export function TopBar() {
   const setDifficulty = useSettingsStore((s) => s.setDifficulty)
   const soundMuted = useSettingsStore((s) => s.soundMuted)
   const toggleMute = useSettingsStore((s) => s.toggleMute)
+  const openPanelById = useUiStore((s) => s.openPanelById)
 
   const [now, setNow] = useState(() => startedAt)
   useEffect(() => {
@@ -69,6 +71,14 @@ export function TopBar() {
         </button>
         <button type="button" onClick={() => newGame()}>
           New
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            openPanelById('share')
+          }}
+        >
+          Share
         </button>
         <label className="top-bar__select">
           <span className="sr-only">Difficulty</span>

@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { CardId, ColumnIndex, Move } from '@/engine/types'
 
-export type PanelId = 'menu' | 'settings' | 'win' | null
+export type PanelId = 'menu' | 'settings' | 'win' | 'share' | null
 
 export interface SelectedRun {
   readonly column: ColumnIndex

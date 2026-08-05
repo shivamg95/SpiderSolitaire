@@ -79,6 +79,7 @@ export const CardLayer = memo(function CardLayer({
             highlighted={hintCardIds?.has(card.id) ?? false}
             selected={selectedCardIds?.has(card.id) ?? false}
             dragging={isDragging}
+            interactive={interactive}
             {...(isDragging && dragOffset ? { dragOffset } : {})}
             {...(interactive && onCardPointerDown
               ? {
