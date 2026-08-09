@@ -364,7 +364,9 @@ export function computeLayout(
         rotate: 0,
         scale: 1,
         faceUp: card.faceUp,
-        compressed,
+        // The tail card is never overlapped, so it keeps its centre artwork even
+        // in a squeezed column; only covered cards drop to a corner-index sliver.
+        compressed: compressed && i < cards.length - 1,
       })
     }
   }

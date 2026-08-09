@@ -1,4 +1,6 @@
 import { create } from 'zustand'
+import { MOVE_MS, RUN_STAGGER_MAX_MS, RUN_STAGGER_MS } from '@/animation/springs'
+import { resolveMotionPreset } from '@/animation/useMotionPreset'
 import {
   attemptMove as engineAttempt,
   canDeal,
@@ -11,6 +13,7 @@ import {
   redo as engineRedo,
   remainingDeals,
   restartDeal as engineRestart,
+  stagedState,
   undo as engineUndo,
 } from '@/engine/game'
 import { scoreFromState } from '@/engine/scoring'
@@ -26,6 +29,9 @@ import { DEFAULT_GAME_SETTINGS } from '@/engine/types'
 import { rankedHints } from '@/solver/search'
 import { useSettingsStore } from './settingsStore'
 import { useUiStore } from './uiStore'
+
+/** Breathing room between a run landing and the sweep starting. */
+const COLLECT_GAP_MS = 60
 
 function randomSeed(): number {
   return (Math.random() * 0xffffffff) >>> 0
@@ -52,6 +58,17 @@ function clearHints(): void {
   useUiStore.getState().stopHintPlayback()
 }
 
+/** How long the travelling cards need before the completed set is swept away. */
+function collectDelayMs(travellingCount: number): number {
+  const reduced = resolveMotionPreset(useSettingsStore.getState().reducedMotion).reduced
+  if (reduced) return 120
+  const stagger = Math.min(
+    Math.max(0, travellingCount - 1) * RUN_STAGGER_MS,
+    RUN_STAGGER_MAX_MS,
+  )
+  return MOVE_MS + stagger + COLLECT_GAP_MS
+}
+
 export interface GameStoreState {
   readonly handle: GameHandle
   readonly undoCount: number
@@ -60,6 +77,8 @@ export interface GameStoreState {
   readonly movingIds: readonly CardId[]
   /** Bumped on every transition so the view can restart flight effects. */
   readonly moveSeq: number
+  /** True while a completed set is waiting to sweep to its foundation. */
+  readonly collecting: boolean
   newGame: (opts?: { seed?: number; difficulty?: Difficulty }) => void
   attemptMove: (move: Move) => boolean
   tapMove: (from: ColumnIndex, count: number) => boolean
@@ -76,125 +95,170 @@ export interface GameStoreState {
   movableLength: (column: number) => number
 }
 
-export const useGameStore = create<GameStoreState>((set, get) => ({
-  handle: createGame(1, 1, DEFAULT_GAME_SETTINGS),
-  undoCount: 0,
-  startedAt: Date.now(),
-  movingIds: [],
-  moveSeq: 0,
+export const useGameStore = create<GameStoreState>((set, get) => {
+  let collectTimer: number | null = null
 
-  newGame: (opts = {}) => {
-    const difficulty = opts.difficulty ?? useSettingsStore.getState().difficulty
-    const seed = opts.seed ?? randomSeed()
-    const handle = createGame(seed, difficulty, settingsFromStore())
-    useUiStore.getState().clearSelection()
-    clearHints()
-    set({
-      handle: withScore(handle, 0),
-      undoCount: 0,
-      startedAt: Date.now(),
-      movingIds: [],
-      moveSeq: get().moveSeq + 1,
-    })
-  },
+  function cancelCollect(): void {
+    if (collectTimer === null) return
+    window.clearTimeout(collectTimer)
+    collectTimer = null
+  }
 
-  attemptMove: (move) => {
-    const { handle } = get()
-    const next = engineAttempt(handle, move)
-    if (next === handle) return false
-    useUiStore.getState().clearSelection()
-    clearHints()
+  function publish(
+    handle: GameHandle,
+    movingIds: readonly CardId[],
+    undoCount: number,
+    collecting: boolean,
+  ): void {
     set({
-      handle: withScore(next, get().undoCount),
-      movingIds: movedCardIds(handle.state, next.state),
+      handle: withScore(handle, undoCount),
+      undoCount,
+      movingIds,
       moveSeq: get().moveSeq + 1,
+      collecting,
     })
-    if (gameWon(next)) {
+    if (!collecting && gameWon(handle)) {
       useUiStore.getState().openPanelById('win')
     }
-    return true
-  },
+  }
 
-  tapMove: (from, count) => {
-    const { handle } = get()
-    const ranked = rankTapDestinations(handle.state, from, count)
-    const best = ranked[0]
-    if (!best) return false
-    return get().attemptMove(best)
-  },
-
-  dealStock: () => {
-    return get().attemptMove({ kind: 'dealStock' })
-  },
-
-  undo: () => {
-    const { handle, undoCount } = get()
-    const next = engineUndo(handle)
-    if (next === handle) return
-    const nextUndo = undoCount + 1
+  /**
+   * Publish a transition, split in two when the move completes a K→A set: the
+   * run flies to its column first, then the finished set sweeps to the
+   * foundation as its own transition. Without the split both journeys start on
+   * the same frame and the arriving card is never seen landing.
+   */
+  function commit(
+    prev: GameHandle,
+    next: GameHandle,
+    move: Move | null,
+    undoCount: number,
+  ): void {
+    cancelCollect()
     useUiStore.getState().clearSelection()
     clearHints()
-    set({
-      handle: withScore(next, nextUndo),
-      undoCount: nextUndo,
-      movingIds: movedCardIds(handle.state, next.state),
-      moveSeq: get().moveSeq + 1,
-    })
-  },
 
-  redo: () => {
-    const { handle, undoCount } = get()
-    const next = engineRedo(handle)
-    if (next === handle) return
-    useUiStore.getState().clearSelection()
-    clearHints()
-    set({
-      handle: withScore(next, undoCount),
-      movingIds: movedCardIds(handle.state, next.state),
-      moveSeq: get().moveSeq + 1,
-    })
-  },
-
-  restartDeal: () => {
-    const { handle } = get()
-    const next = engineRestart(handle)
-    useUiStore.getState().clearSelection()
-    clearHints()
-    set({
-      handle: withScore({ ...next, settings: settingsFromStore() }, 0),
-      undoCount: 0,
-      startedAt: Date.now(),
-      movingIds: [],
-      moveSeq: get().moveSeq + 1,
-    })
-  },
-
-  requestHint: () => {
-    const ui = useUiStore.getState()
-    if (ui.hintPlaying) {
-      ui.stopHintPlayback()
-      return null
+    const staged =
+      move !== null && typeof window !== 'undefined' ? stagedState(prev, move) : null
+    if (staged === null) {
+      publish(next, movedCardIds(prev.state, next.state), undoCount, false)
+      return
     }
-    const { handle } = get()
-    const candidates = hintableMoves(handle.state, handle.settings)
-    const ranked = rankedHints(
-      handle.state,
-      Math.max(1, candidates.length),
-      handle.settings,
-      candidates,
-    )
-    const moves = ranked.map((r) => r.move)
-    ui.startHintPlayback(moves)
-    return moves[0] ?? null
-  },
 
-  canUndo: () => get().handle.moveLog.length > 0,
-  canRedo: () => get().handle.redoLog.length > 0,
-  canDealStock: () => canDeal(get().handle),
-  isWon: () => gameWon(get().handle),
-  dealsLeft: () => remainingDeals(get().handle.state),
-  movableLength: (column) => columnMovableLength(get().handle.state, column),
-}))
+    const travelling = movedCardIds(prev.state, staged)
+    publish({ ...next, state: staged }, travelling, undoCount, true)
+    collectTimer = window.setTimeout(() => {
+      collectTimer = null
+      publish(next, movedCardIds(staged, next.state), get().undoCount, false)
+    }, collectDelayMs(travelling.length))
+  }
+
+  return {
+    handle: createGame(1, 1, DEFAULT_GAME_SETTINGS),
+    undoCount: 0,
+    startedAt: Date.now(),
+    movingIds: [],
+    moveSeq: 0,
+    collecting: false,
+
+    newGame: (opts = {}) => {
+      const difficulty = opts.difficulty ?? useSettingsStore.getState().difficulty
+      const seed = opts.seed ?? randomSeed()
+      const handle = createGame(seed, difficulty, settingsFromStore())
+      cancelCollect()
+      useUiStore.getState().clearSelection()
+      clearHints()
+      set({
+        handle: withScore(handle, 0),
+        undoCount: 0,
+        startedAt: Date.now(),
+        movingIds: [],
+        moveSeq: get().moveSeq + 1,
+        collecting: false,
+      })
+    },
+
+    attemptMove: (move) => {
+      const { handle, undoCount, collecting } = get()
+      if (collecting) return false
+      const next = engineAttempt(handle, move)
+      if (next === handle) return false
+      commit(handle, next, move, undoCount)
+      return true
+    },
+
+    tapMove: (from, count) => {
+      const { handle } = get()
+      const ranked = rankTapDestinations(handle.state, from, count)
+      const best = ranked[0]
+      if (!best) return false
+      return get().attemptMove(best)
+    },
+
+    dealStock: () => {
+      return get().attemptMove({ kind: 'dealStock' })
+    },
+
+    undo: () => {
+      const { handle, undoCount, collecting } = get()
+      if (collecting) return
+      const next = engineUndo(handle)
+      if (next === handle) return
+      commit(handle, next, null, undoCount + 1)
+    },
+
+    redo: () => {
+      const { handle, undoCount, collecting } = get()
+      if (collecting) return
+      const move = handle.redoLog[0] ?? null
+      const next = engineRedo(handle)
+      if (next === handle) return
+      commit(handle, next, move, undoCount)
+    },
+
+    restartDeal: () => {
+      const { handle } = get()
+      const next = engineRestart(handle)
+      cancelCollect()
+      useUiStore.getState().clearSelection()
+      clearHints()
+      set({
+        handle: withScore({ ...next, settings: settingsFromStore() }, 0),
+        undoCount: 0,
+        startedAt: Date.now(),
+        movingIds: [],
+        moveSeq: get().moveSeq + 1,
+        collecting: false,
+      })
+    },
+
+    requestHint: () => {
+      const ui = useUiStore.getState()
+      if (ui.hintPlaying) {
+        ui.stopHintPlayback()
+        return null
+      }
+      const { handle } = get()
+      const candidates = hintableMoves(handle.state, handle.settings)
+      const ranked = rankedHints(
+        handle.state,
+        Math.max(1, candidates.length),
+        handle.settings,
+        candidates,
+      )
+      const moves = ranked.map((r) => r.move)
+      ui.startHintPlayback(moves)
+      return moves[0] ?? null
+    },
+
+    canUndo: () => !get().collecting && get().handle.moveLog.length > 0,
+    canRedo: () => !get().collecting && get().handle.redoLog.length > 0,
+    canDealStock: () => !get().collecting && canDeal(get().handle),
+    isWon: () => gameWon(get().handle),
+    dealsLeft: () => remainingDeals(get().handle.state),
+    movableLength: (column) => columnMovableLength(get().handle.state, column),
+  }
+})
 
 /** Boot a fresh deal once settings are available (call from App mount). */
 export function bootstrapGame(): void {

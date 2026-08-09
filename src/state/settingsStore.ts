@@ -48,7 +48,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   difficulty: 1,
   theme: DEFAULT_THEME,
   appearance: DEFAULT_APPEARANCE,
-  allowDealWithEmptyColumn: false,
+  allowDealWithEmptyColumn: true,
   undoPenalty: true,
   reducedMotion: false,
   soundMuted: false,

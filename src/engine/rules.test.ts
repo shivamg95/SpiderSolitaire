@@ -11,6 +11,7 @@ import {
 } from './rules'
 import { parseBoard } from './testing/ascii'
 import type { Card, Rank, Suit } from './types'
+import { DEFAULT_GAME_SETTINGS } from './types'
 import { makeCard } from './cards'
 import { applyMove } from './moves'
 import { assertInvariants } from './invariants'
@@ -83,7 +84,7 @@ describe('legalMoves fixtures', () => {
     )
   })
 
-  it('blocks stock deal when a column is empty', () => {
+  it('deals with an empty column unless the setting forbids it', () => {
     const state = parseBoard(`
       difficulty: 1
       c0: -
@@ -91,12 +92,12 @@ describe('legalMoves fixtures', () => {
       stock: 10
       found: 0
     `)
-    expect(legalMoves(state).some((m) => m.kind === 'dealStock')).toBe(false)
+    expect(legalMoves(state).some((m) => m.kind === 'dealStock')).toBe(true)
     expect(
-      legalMoves(state, { allowDealWithEmptyColumn: true, undoPenalty: true }).some(
+      legalMoves(state, { allowDealWithEmptyColumn: false, undoPenalty: true }).some(
         (m) => m.kind === 'dealStock',
       ),
-    ).toBe(true)
+    ).toBe(false)
   })
 
   it('detects dead ends and wins', () => {
@@ -149,7 +150,13 @@ describe('applyMove effects', () => {
       found: 0
     `)
     expect(applyMove(state, { kind: 'moveRun', from: 0, to: 1, count: 1 }).ok).toBe(false)
-    expect(applyMove(state, { kind: 'dealStock' }).ok).toBe(false)
+    expect(
+      applyMove(
+        state,
+        { kind: 'dealStock' },
+        { ...DEFAULT_GAME_SETTINGS, allowDealWithEmptyColumn: false },
+      ).ok,
+    ).toBe(false)
     expect(applyMove(state, { kind: 'moveRun', from: 0, to: 0, count: 1 }).ok).toBe(false)
   })
 

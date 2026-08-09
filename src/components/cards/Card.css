@@ -110,10 +110,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  line-height: 1;
-  font-weight: 700;
-  font-size: clamp(0.75rem, calc(var(--card-w, 72px) * 0.22), 1.7rem);
+  line-height: 0.96;
+  font-family: var(--font-card-index);
+  font-weight: 900;
+  font-size: clamp(0.8rem, calc(var(--card-w, 72px) * 0.235), 1.8rem);
+  letter-spacing: -0.015em;
   font-variant-numeric: tabular-nums;
+  /* Thickens the glyph past the heaviest weight the system face offers. */
+  -webkit-text-stroke: 0.028em currentColor;
 }
 
 .card-index--tl {

@@ -20,7 +20,7 @@ Canonical rules for the engine. Tests cite this document.
 
 - A **movable group** is a same-suit, strictly descending run of face-up cards ending at the column tail.
 - A run may be placed on a card of rank `+1` of **any** suit, or onto an empty column.
-- Stock deal is blocked while any column is empty unless setting `allowDealWithEmptyColumn` is on (default off).
+- Stock deal is allowed with empty columns on the board; turning setting `allowDealWithEmptyColumn` off (default on) restores the stricter rule that blocks it.
 
 ## Foundations and win
 

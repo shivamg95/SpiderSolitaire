@@ -49,11 +49,22 @@ function maybeFoundation(
   }
 }
 
+export interface ApplyOptions {
+  /**
+   * Leave a completed K→A run sitting on its column instead of sweeping it to a
+   * foundation. Lets the view show the cards arriving before they are collected;
+   * the collection itself is then applied as a second, unstaged move.
+   */
+  readonly deferFoundations?: boolean
+}
+
 export function applyMove(
   state: GameState,
   move: Move,
   settings: GameSettings = DEFAULT_GAME_SETTINGS,
+  options: ApplyOptions = {},
 ): MoveResult {
+  const collect = !options.deferFoundations
   if (move.kind === 'dealStock') {
     if (state.stock.length === 0) {
       return { ok: false, reason: 'stock_empty' }
@@ -77,8 +88,10 @@ export function applyMove(
     effects.push({ kind: 'deal', cardIds: dealtIds })
     const foundations = state.foundations.map((f) => f.slice())
     const score = { value: state.score - 1 }
-    for (let i = 0; i < 10; i++) {
-      maybeFoundation(columns, foundations, i as ColumnIndex, effects, score)
+    if (collect) {
+      for (let i = 0; i < 10; i++) {
+        maybeFoundation(columns, foundations, i as ColumnIndex, effects, score)
+      }
     }
     return {
       ok: true,
@@ -130,7 +143,9 @@ export function applyMove(
 
   const foundations = state.foundations.map((f) => f.slice())
   const score = { value: state.score - 1 }
-  maybeFoundation(columns, foundations, to, effects, score)
+  if (collect) {
+    maybeFoundation(columns, foundations, to, effects, score)
+  }
 
   return {
     ok: true,

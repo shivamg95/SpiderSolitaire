@@ -87,6 +87,22 @@ export function attemptMove(handle: GameHandle, move: Move): GameHandle {
   }
 }
 
+/**
+ * The board halfway through a move that completes a set: the run has landed on
+ * its column but the K→A sweep to the foundation has not happened yet. Null when
+ * the move collects nothing, since then there is nothing to stage.
+ *
+ * The move log is unaffected — this is a view of one legal move mid-flight, not
+ * a move of its own — so undo and replay still see a single entry.
+ */
+export function stagedState(handle: GameHandle, move: Move): GameState | null {
+  if (!collectsSet(handle.state, move, handle.settings)) return null
+  const staged = applyMove(handle.state, move, handle.settings, {
+    deferFoundations: true,
+  })
+  return staged.ok ? staged.state : null
+}
+
 export function undo(handle: GameHandle): GameHandle {
   if (handle.moveLog.length === 0) return handle
   const last = handle.moveLog[handle.moveLog.length - 1]
@@ -166,6 +182,16 @@ export function breaksExistingBuild(state: GameState, move: Move): boolean {
   return anchor.suit === head.suit && anchor.rank === head.rank + 1
 }
 
+/** True when a move lands the thirteenth card of a set and clears it away. */
+export function collectsSet(
+  state: GameState,
+  move: Move,
+  settings: GameSettings = DEFAULT_GAME_SETTINGS,
+): boolean {
+  const result = applyMove(state, move, settings)
+  return result.ok && result.effects.some((e) => e.kind === 'foundation')
+}
+
 /** True when a move achieves something structural rather than shuffling cards. */
 export function isProductiveMove(state: GameState, move: Move): boolean {
   if (move.kind === 'dealStock') return true
@@ -184,8 +210,7 @@ export function isProductiveMove(state: GameState, move: Move): boolean {
   const top = dest[dest.length - 1]
   if (head && head.suit === top?.suit) return true
 
-  const result = applyMove(state, move)
-  return result.ok && result.effects.some((e) => e.kind === 'foundation')
+  return collectsSet(state, move)
 }
 
 /**
@@ -206,12 +231,7 @@ export function hintableMoves(
 }
 
 export function autoCompletableRuns(state: GameState): Move[] {
-  return legalMoves(state).filter((m) => {
-    if (m.kind !== 'moveRun') return false
-    const result = applyMove(state, m)
-    if (!result.ok) return false
-    return result.effects.some((e) => e.kind === 'foundation')
-  })
+  return legalMoves(state).filter((m) => m.kind === 'moveRun' && collectsSet(state, m))
 }
 
 export function exposesFaceDown(state: GameState, move: Move): boolean {
@@ -224,6 +244,15 @@ export function exposesFaceDown(state: GameState, move: Move): boolean {
   return Boolean(next && !next.faceUp)
 }
 
+/**
+ * Where a tapped run should go, best first.
+ *
+ * Every candidate lifts the same run, so what separates them is purely the
+ * landing spot: completing a set beats everything, then a same-suit card that
+ * merges two builds, then covering some other card, and finally spending an
+ * empty column. Swapping one empty column for another gains nothing at all, so
+ * it sorts last and is only ever chosen when it is the single legal option.
+ */
 export function rankTapDestinations(
   state: GameState,
   from: number,
@@ -235,21 +264,28 @@ export function rankTapDestinations(
   )
 
   const scoreMove = (m: Extract<Move, { kind: 'moveRun' }>): number => {
+    const source = state.columns[m.from] ?? []
     const dest = state.columns[m.to] ?? []
-    const run = state.columns[m.from]?.slice(-m.count) ?? []
-    let score = 0
-    if (dest.length === 0) score += 1
-    else {
-      const top = dest[dest.length - 1]!
-      const head = run[0]!
-      if (top.suit === head.suit) score += 3
-      else score += 2
+    const head = source[source.length - count]
+    if (!head) return -Infinity
+    if (collectsSet(state, m)) return 10_000
+
+    if (dest.length === 0) {
+      return source.length === count ? -10_000 : 100
     }
-    if (exposesFaceDown(state, m)) score += 4
-    return score
+
+    const top = dest[dest.length - 1]!
+    // Merging onto the longer build keeps the most cards moving as one run.
+    if (top.suit === head.suit) return 1_000 + movableRunLength(dest)
+    // A cross-suit landing buries the card it covers, so prefer burying a loose
+    // card over the head of a build, and a shallow column over a deep one.
+    return 500 - movableRunLength(dest) * 10 - dest.length
   }
 
-  return candidates.slice().sort((a, b) => scoreMove(b) - scoreMove(a))
+  return candidates
+    .map((move) => ({ move, score: scoreMove(move) }))
+    .sort((a, b) => b.score - a.score)
+    .map((entry) => entry.move)
 }
 
 export function gameWon(handle: GameHandle): boolean {

@@ -78,13 +78,15 @@ describe('computeLayout', () => {
     const metrics = computeBoardMetrics(viewport)
     const layout = computeLayout(state, viewport)
     const available = metrics.boardHeight - metrics.columnsY - metrics.padY
-    for (const card of columns[0]!) {
+    const tall = columns[0]!
+    tall.forEach((card, i) => {
       const p = layout.get(card.id)!
       expect(p.y + metrics.cardHeight).toBeLessThanOrEqual(
         available + metrics.columnsY + 2,
       )
-      expect(p.compressed).toBe(true)
-    }
+      // The uncovered tail card keeps its full face; the rest show a sliver.
+      expect(p.compressed).toBe(i < tall.length - 1)
+    })
   })
 
   it('relaxes compaction when cards are removed', () => {

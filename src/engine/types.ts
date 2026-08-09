@@ -26,7 +26,7 @@ export interface GameSettings {
 }
 
 export const DEFAULT_GAME_SETTINGS: GameSettings = {
-  allowDealWithEmptyColumn: false,
+  allowDealWithEmptyColumn: true,
   undoPenalty: true,
 }
 

@@ -24,21 +24,39 @@ import './Board.css'
 
 const EMPTY_FLIGHT: ReadonlyMap<string, number> = new Map()
 
-/** Fires once each time a new foundation set is completed. */
+/**
+ * Fires once each time a new foundation set is completed, held back by `delayMs`
+ * so the celebration breaks over the cards as they arrive rather than over an
+ * empty slot they are still flying towards.
+ */
 function useFoundationBurst(
   foundationsFilled: number,
+  delayMs: number,
 ): { key: number; index: number } | null {
   const [seen, setSeen] = useState(foundationsFilled)
+  const [pending, setPending] = useState<number | null>(null)
   const [burst, setBurst] = useState<{ key: number; index: number } | null>(null)
 
   if (seen !== foundationsFilled) {
     setSeen(foundationsFilled)
-    setBurst(
-      foundationsFilled > seen
-        ? { key: foundationsFilled, index: foundationsFilled - 1 }
-        : null,
-    )
+    if (foundationsFilled > seen) {
+      setPending(foundationsFilled)
+    } else {
+      setPending(null)
+      setBurst(null)
+    }
   }
+
+  useEffect(() => {
+    if (pending === null) return
+    const id = window.setTimeout(() => {
+      setBurst({ key: pending, index: pending - 1 })
+      setPending(null)
+    }, delayMs)
+    return () => {
+      window.clearTimeout(id)
+    }
+  }, [pending, delayMs])
 
   useEffect(() => {
     if (!burst) return
@@ -78,6 +96,7 @@ export function Board() {
   const movableLength = useGameStore((s) => s.movableLength)
   const movingIds = useGameStore((s) => s.movingIds)
   const moveSeq = useGameStore((s) => s.moveSeq)
+  const collecting = useGameStore((s) => s.collecting)
 
   const selectedRun = useUiStore((s) => s.selectedRun)
   const setSelectedRun = useUiStore((s) => s.setSelectedRun)
@@ -205,7 +224,7 @@ export function Board() {
       column: number,
       indexInColumn: number,
     ) => {
-      if (panelOpen) return
+      if (panelOpen || collecting) return
       const col = handle.state.columns[column]
       if (!col) return
       const max = movableLength(column)
@@ -219,7 +238,7 @@ export function Board() {
         count,
       })
     },
-    [handle.state.columns, movableLength, onPointerDown, panelOpen],
+    [collecting, handle.state.columns, movableLength, onPointerDown, panelOpen],
   )
 
   const selectedCardIds = useMemo(() => {
@@ -232,7 +251,7 @@ export function Board() {
   const foundationsFilled = handle.state.foundations.length
   const pulseDeal = hintPlaying && hintMove?.kind === 'dealStock'
 
-  const burst = useFoundationBurst(foundationsFilled)
+  const burst = useFoundationBurst(foundationsFilled, preset.reduced ? 0 : MOVE_MS)
   const burstSuit =
     burst !== null ? (handle.state.foundations[burst.index]?.[0]?.suit ?? 'S') : 'S'
   const burstX =
