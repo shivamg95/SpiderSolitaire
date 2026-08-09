@@ -1,7 +1,14 @@
 import { deal } from './deal'
 import { applyMove } from './moves'
 import { canDealStock, isWon, legalMoves, movableRunLength } from './rules'
-import type { Difficulty, GameHandle, GameSettings, GameState, Move } from './types'
+import type {
+  CardId,
+  Difficulty,
+  GameHandle,
+  GameSettings,
+  GameState,
+  Move,
+} from './types'
 import { DEFAULT_GAME_SETTINGS, SNAPSHOT_EVERY } from './types'
 
 interface Snapshot {
@@ -115,11 +122,87 @@ export function remainingDeals(state: GameState): number {
   return state.stock.length
 }
 
+function positionKeys(state: GameState): Map<CardId, string> {
+  const keys = new Map<CardId, string>()
+  state.columns.forEach((col, c) => {
+    col.forEach((card, i) => keys.set(card.id, `c${c}:${i}`))
+  })
+  // Dealing shifts the remaining piles down one slot; keying the stock as a
+  // single region keeps that re-index from looking like 50 cards taking flight.
+  state.stock.forEach((batch) => {
+    batch.forEach((card) => keys.set(card.id, 'stock'))
+  })
+  state.foundations.forEach((run, f) => {
+    run.forEach((card, i) => keys.set(card.id, `f${f}:${i}`))
+  })
+  return keys
+}
+
+/**
+ * Cards whose board position changed between two states, in destination order.
+ * Used by the view to keep travelling cards above settled ones; works for every
+ * transition (move, deal, undo, redo, foundation) without threading effects.
+ */
+export function movedCardIds(prev: GameState, next: GameState): CardId[] {
+  const before = positionKeys(prev)
+  const moved: CardId[] = []
+  for (const [id, key] of positionKeys(next)) {
+    if (before.get(id) !== key) moved.push(id)
+  }
+  return moved
+}
+
+/**
+ * True when the run being moved is already correctly placed — its head sits on
+ * a face-up, same-suit card one rank higher, so lifting it dismantles a build.
+ */
+export function breaksExistingBuild(state: GameState, move: Move): boolean {
+  if (move.kind !== 'moveRun') return false
+  const column = state.columns[move.from]
+  if (!column) return false
+  const anchor = column[column.length - move.count - 1]
+  const head = column[column.length - move.count]
+  if (!head || !anchor?.faceUp) return false
+  return anchor.suit === head.suit && anchor.rank === head.rank + 1
+}
+
+/** True when a move achieves something structural rather than shuffling cards. */
+export function isProductiveMove(state: GameState, move: Move): boolean {
+  if (move.kind === 'dealStock') return true
+  const source = state.columns[move.from]
+  const dest = state.columns[move.to]
+  if (!source || !dest) return false
+
+  const emptiesSource = source.length === move.count
+  const intoEmpty = dest.length === 0
+  // Relocating a whole column into an empty one trades one gap for another.
+  if (emptiesSource && intoEmpty) return false
+  if (emptiesSource || intoEmpty) return true
+  if (exposesFaceDown(state, move)) return true
+
+  const head = source[source.length - move.count]
+  const top = dest[dest.length - 1]
+  if (head && head.suit === top?.suit) return true
+
+  const result = applyMove(state, move)
+  return result.ok && result.effects.some((e) => e.kind === 'foundation')
+}
+
+/**
+ * Moves worth offering as hints: legal moves that neither dismantle an existing
+ * same-suit build nor shuffle cards to no effect. Falls back a tier at a time so
+ * the hint button always has something to show while moves remain.
+ */
 export function hintableMoves(
   state: GameState,
   settings: GameSettings = DEFAULT_GAME_SETTINGS,
 ): Move[] {
-  return legalMoves(state, settings)
+  const all = legalMoves(state, settings)
+  const intact = all.filter((move) => !breaksExistingBuild(state, move))
+  const productive = intact.filter((move) => isProductiveMove(state, move))
+  if (productive.length > 0) return productive
+  if (intact.length > 0) return intact
+  return all
 }
 
 export function autoCompletableRuns(state: GameState): Move[] {

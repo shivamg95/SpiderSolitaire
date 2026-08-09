@@ -14,6 +14,50 @@ function formatTime(ms: number): string {
   return `${m}:${r.toString().padStart(2, '0')}`
 }
 
+type IconName = 'undo' | 'redo' | 'hint' | 'menu'
+
+function RailIcon({ name }: { name: IconName }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="side-rail__icon"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.1"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      {name === 'undo' ? (
+        <>
+          <path d="M4.5 9h9.3a5.6 5.6 0 0 1 0 11.2H8.3" />
+          <path d="M8.6 4.4 4 9l4.6 4.6" />
+        </>
+      ) : null}
+      {name === 'redo' ? (
+        <>
+          <path d="M19.5 9h-9.3a5.6 5.6 0 0 0 0 11.2h5.5" />
+          <path d="M15.4 4.4 20 9l-4.6 4.6" />
+        </>
+      ) : null}
+      {name === 'hint' ? (
+        <>
+          <path d="M12 2.8a6.3 6.3 0 0 0-3.7 11.4c.6.43.97 1.08 1.02 1.8H14.7c.05-.72.42-1.37 1.02-1.8A6.3 6.3 0 0 0 12 2.8Z" />
+          <path d="M9.5 19.1h5" />
+          <path d="M10.5 21.5h3" />
+        </>
+      ) : null}
+      {name === 'menu' ? (
+        <>
+          <path d="M4 7h16" />
+          <path d="M4 12h16" />
+          <path d="M4 17h16" />
+        </>
+      ) : null}
+    </svg>
+  )
+}
+
 export interface SideRailProps {
   readonly metrics: BoardMetrics
   readonly foundationsFilled: number
@@ -38,6 +82,7 @@ export function SideRail({
   const canDealStock = useGameStore((s) => s.canDealStock)
   const dealsLeft = useGameStore((s) => s.dealsLeft)
   const openPanelById = useUiStore((s) => s.openPanelById)
+  const hintPlaying = useUiStore((s) => s.hintPlaying)
 
   const [now, setNow] = useState(() => startedAt)
   useEffect(() => {
@@ -108,7 +153,7 @@ export function SideRail({
             aria-label="Undo"
             title="Undo"
           >
-            ↶
+            <RailIcon name="undo" />
           </button>
           <button
             type="button"
@@ -118,16 +163,21 @@ export function SideRail({
             aria-label="Redo"
             title="Redo"
           >
-            ↷
+            <RailIcon name="redo" />
           </button>
           <button
             type="button"
-            className="side-rail__btn"
+            className={clsx(
+              'side-rail__btn',
+              'side-rail__btn--hint',
+              hintPlaying && 'side-rail__btn--active',
+            )}
             onClick={() => requestHint()}
-            aria-label="Hint"
+            aria-label={hintPlaying ? 'Stop hint' : 'Hint'}
+            aria-pressed={hintPlaying}
             title="Hint"
           >
-            ?
+            <RailIcon name="hint" />
           </button>
           <button
             type="button"
@@ -138,7 +188,7 @@ export function SideRail({
             aria-label="Menu"
             title="Menu"
           >
-            ⋯
+            <RailIcon name="menu" />
           </button>
         </div>
       </div>

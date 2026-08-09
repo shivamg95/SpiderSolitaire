@@ -5,7 +5,9 @@ export interface MotionPreset {
   readonly reduced: boolean
   readonly snap: MotionTransition
   readonly deal: MotionTransition
+  readonly arc: MotionTransition
   readonly flip: MotionTransition
+  readonly hintFlight: MotionTransition
   readonly panel: MotionTransition
   readonly celebrate: MotionTransition
   readonly fadeMs: number
@@ -15,7 +17,9 @@ const FULL: MotionPreset = {
   reduced: false,
   snap: springs.snap,
   deal: springs.deal,
+  arc: springs.arc,
   flip: springs.flip,
+  hintFlight: springs.hintFlight,
   panel: springs.panel,
   celebrate: springs.celebrate,
   fadeMs: 180,
@@ -25,7 +29,9 @@ const LOW: MotionPreset = {
   reduced: true,
   snap: lowMotionTween,
   deal: lowMotionTween,
+  arc: lowMotionTween,
   flip: lowMotionTween,
+  hintFlight: { type: 'tween', duration: 0.12, ease: 'easeOut' },
   panel: lowMotionTween,
   celebrate: lowMotionTween,
   fadeMs: 80,

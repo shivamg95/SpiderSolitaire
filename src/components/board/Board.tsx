@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import clsx from 'clsx'
 import type { Card as CardModel, ColumnIndex } from '@/engine/types'
+import { MOVE_MS, RUN_STAGGER_MAX_MS, RUN_STAGGER_MS } from '@/animation/springs'
 import { useMotionPreset } from '@/animation/useMotionPreset'
 import { CardLayer } from '@/components/cards/CardLayer'
 import { HintGhostLayer } from '@/components/cards/HintGhostLayer'
 import { ColumnDropZones } from '@/components/board/ColumnDropZones'
 import type { ColumnDropZonesHandle } from '@/components/board/ColumnDropZones'
+import { BURST_MS, FoundationBurst } from '@/components/board/FoundationBurst'
 import { SideRail } from '@/components/chrome/SideRail'
 import { usePointerDrag } from '@/interaction/usePointerDrag'
 import { useKeyboardShortcuts } from '@/interaction/useKeyboardShortcuts'
@@ -19,6 +21,37 @@ import { useGameStore } from '@/state/gameStore'
 import { useSettingsStore } from '@/state/settingsStore'
 import { useUiStore } from '@/state/uiStore'
 import './Board.css'
+
+const EMPTY_FLIGHT: ReadonlyMap<string, number> = new Map()
+
+/** Fires once each time a new foundation set is completed. */
+function useFoundationBurst(
+  foundationsFilled: number,
+): { key: number; index: number } | null {
+  const [seen, setSeen] = useState(foundationsFilled)
+  const [burst, setBurst] = useState<{ key: number; index: number } | null>(null)
+
+  if (seen !== foundationsFilled) {
+    setSeen(foundationsFilled)
+    setBurst(
+      foundationsFilled > seen
+        ? { key: foundationsFilled, index: foundationsFilled - 1 }
+        : null,
+    )
+  }
+
+  useEffect(() => {
+    if (!burst) return
+    const id = window.setTimeout(() => {
+      setBurst(null)
+    }, BURST_MS)
+    return () => {
+      window.clearTimeout(id)
+    }
+  }, [burst])
+
+  return burst
+}
 
 function useViewport(): ViewportSize {
   const [vp, setVp] = useState<ViewportSize>(() => ({
@@ -43,6 +76,8 @@ export function Board() {
   const attemptMove = useGameStore((s) => s.attemptMove)
   const tapMove = useGameStore((s) => s.tapMove)
   const movableLength = useGameStore((s) => s.movableLength)
+  const movingIds = useGameStore((s) => s.movingIds)
+  const moveSeq = useGameStore((s) => s.moveSeq)
 
   const selectedRun = useUiStore((s) => s.selectedRun)
   const setSelectedRun = useUiStore((s) => s.setSelectedRun)
@@ -70,6 +105,30 @@ export function Board() {
   const liftRef = useRef(0)
 
   useKeyboardShortcuts()
+
+  // Cards keep an elevated z-index and an arced path until their flight lands,
+  // otherwise a move that travels leftwards slides behind the columns it crosses.
+  const [landedSeq, setLandedSeq] = useState(0)
+  const flightOrder = useMemo<ReadonlyMap<string, number>>(() => {
+    if (movingIds.length === 0 || landedSeq >= moveSeq) return EMPTY_FLIGHT
+    const order = new Map<string, number>()
+    movingIds.forEach((id, i) => order.set(id, i))
+    return order
+  }, [movingIds, moveSeq, landedSeq])
+
+  useEffect(() => {
+    if (movingIds.length === 0) return
+    const stagger = Math.min((movingIds.length - 1) * RUN_STAGGER_MS, RUN_STAGGER_MAX_MS)
+    const id = window.setTimeout(
+      () => {
+        setLandedSeq(moveSeq)
+      },
+      preset.reduced ? 120 : MOVE_MS + stagger + 80,
+    )
+    return () => {
+      window.clearTimeout(id)
+    }
+  }, [moveSeq, movingIds, preset.reduced])
 
   const emptyColumns = useMemo(() => {
     const empty = new Set<number>()
@@ -173,6 +232,19 @@ export function Board() {
   const foundationsFilled = handle.state.foundations.length
   const pulseDeal = hintPlaying && hintMove?.kind === 'dealStock'
 
+  const burst = useFoundationBurst(foundationsFilled)
+  const burstSuit =
+    burst !== null ? (handle.state.foundations[burst.index]?.[0]?.suit ?? 'S') : 'S'
+  const burstX =
+    (metrics.layoutMode === 'bottom'
+      ? metrics.foundationX +
+        (burst?.index ?? 0) * Math.max(8, metrics.foundationStep * 0.6)
+      : metrics.foundationX) +
+    metrics.railCardWidth / 2
+  const burstY =
+    (metrics.foundationYs[burst?.index ?? 0] ?? metrics.columnsY) +
+    metrics.railCardHeight / 2
+
   return (
     <div
       className={clsx('board-shell', panelOpen && 'board-shell--modal-open')}
@@ -210,8 +282,12 @@ export function Board() {
           cardWidth={metrics.cardWidth}
           cardHeight={metrics.cardHeight}
           transition={preset.snap}
+          arcTransition={preset.arc}
+          flipTransition={preset.flip}
+          reducedMotion={reducedMotion || preset.reduced}
           selectedCardIds={selectedCardIds}
           draggingIds={draggingIds}
+          flightOrder={flightOrder}
           dragOffset={dragOffset}
           onCardPointerDown={onCardPointerDown}
         />
@@ -223,7 +299,7 @@ export function Board() {
           placements={placements}
           metrics={metrics}
           availableColumnHeight={availableColumnHeight}
-          transition={preset.deal}
+          transition={preset.hintFlight}
           reducedMotion={reducedMotion || preset.reduced}
           onCycleComplete={advanceHint}
         />
@@ -233,6 +309,16 @@ export function Board() {
           panelOpen={panelOpen}
           pulseDeal={pulseDeal}
         />
+        {burst ? (
+          <FoundationBurst
+            burstKey={burst.key}
+            x={burstX}
+            y={burstY}
+            suit={burstSuit}
+            size={metrics.railCardWidth}
+            reducedMotion={reducedMotion || preset.reduced}
+          />
+        ) : null}
       </div>
     </div>
   )

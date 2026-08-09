@@ -1,7 +1,11 @@
 import { memo, useMemo } from 'react'
 import type { Card as CardModel, CardId, GameState } from '@/engine/types'
 import type { CardPlacement } from '@/layout/computeLayout'
-import type { MotionTransition } from '@/animation/springs'
+import {
+  RUN_STAGGER_MAX_MS,
+  RUN_STAGGER_MS,
+  type MotionTransition,
+} from '@/animation/springs'
 import { Card } from './Card'
 
 export interface CardLayerProps {
@@ -10,9 +14,14 @@ export interface CardLayerProps {
   readonly cardWidth: number
   readonly cardHeight: number
   readonly transition: MotionTransition
+  readonly arcTransition?: MotionTransition
+  readonly flipTransition?: MotionTransition
+  readonly reducedMotion?: boolean
   readonly hintCardIds?: ReadonlySet<string>
   readonly selectedCardIds?: ReadonlySet<string>
   readonly draggingIds?: ReadonlySet<string>
+  /** Card id to its position in the run currently in flight, for the stagger. */
+  readonly flightOrder?: ReadonlyMap<string, number>
   readonly dragOffset?: { x: number; y: number }
   readonly onCardPointerDown?: (
     event: React.PointerEvent,
@@ -53,9 +62,13 @@ export const CardLayer = memo(function CardLayer({
   cardWidth,
   cardHeight,
   transition,
+  arcTransition,
+  flipTransition,
+  reducedMotion = false,
   hintCardIds,
   selectedCardIds,
   draggingIds,
+  flightOrder,
   dragOffset,
   onCardPointerDown,
 }: CardLayerProps) {
@@ -68,6 +81,7 @@ export const CardLayer = memo(function CardLayer({
         if (!placement) return null
         const isDragging = draggingIds?.has(card.id) ?? false
         const interactive = column !== null && card.faceUp
+        const flightIndex = flightOrder?.get(card.id)
         return (
           <Card
             key={card.id}
@@ -76,10 +90,19 @@ export const CardLayer = memo(function CardLayer({
             width={cardWidth}
             height={cardHeight}
             transition={transition}
+            reducedMotion={reducedMotion}
             highlighted={hintCardIds?.has(card.id) ?? false}
             selected={selectedCardIds?.has(card.id) ?? false}
             dragging={isDragging}
             interactive={interactive}
+            flying={flightIndex !== undefined}
+            flightDelayMs={
+              flightIndex === undefined
+                ? 0
+                : Math.min(flightIndex * RUN_STAGGER_MS, RUN_STAGGER_MAX_MS)
+            }
+            {...(arcTransition ? { arcTransition } : {})}
+            {...(flipTransition ? { flipTransition } : {})}
             {...(isDragging && dragOffset ? { dragOffset } : {})}
             {...(interactive && onCardPointerDown
               ? {

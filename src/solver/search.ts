@@ -128,8 +128,9 @@ export function rankedHints(
   state: GameState,
   limit = 3,
   settings: GameSettings = DEFAULT_GAME_SETTINGS,
+  candidates?: readonly Move[],
 ): { move: Move; explanation: string; confidence: 'high' | 'medium' | 'low' }[] {
-  const moves = legalMoves(state, settings)
+  const moves = candidates ?? legalMoves(state, settings)
   const scored = moves.map((move) => {
     const result = applyMove(state, move, settings)
     const delta = result.ok ? heuristic(result.state) - heuristic(state) : -999

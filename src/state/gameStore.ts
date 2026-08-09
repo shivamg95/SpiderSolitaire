@@ -6,6 +6,7 @@ import {
   createGame,
   gameWon,
   hintableMoves,
+  movedCardIds,
   rankTapDestinations,
   redo as engineRedo,
   remainingDeals,
@@ -14,6 +15,7 @@ import {
 } from '@/engine/game'
 import { scoreFromState } from '@/engine/scoring'
 import type {
+  CardId,
   ColumnIndex,
   Difficulty,
   GameHandle,
@@ -54,6 +56,10 @@ export interface GameStoreState {
   readonly handle: GameHandle
   readonly undoCount: number
   readonly startedAt: number
+  /** Cards whose board position changed in the most recent transition. */
+  readonly movingIds: readonly CardId[]
+  /** Bumped on every transition so the view can restart flight effects. */
+  readonly moveSeq: number
   newGame: (opts?: { seed?: number; difficulty?: Difficulty }) => void
   attemptMove: (move: Move) => boolean
   tapMove: (from: ColumnIndex, count: number) => boolean
@@ -74,6 +80,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   handle: createGame(1, 1, DEFAULT_GAME_SETTINGS),
   undoCount: 0,
   startedAt: Date.now(),
+  movingIds: [],
+  moveSeq: 0,
 
   newGame: (opts = {}) => {
     const difficulty = opts.difficulty ?? useSettingsStore.getState().difficulty
@@ -85,6 +93,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       handle: withScore(handle, 0),
       undoCount: 0,
       startedAt: Date.now(),
+      movingIds: [],
+      moveSeq: get().moveSeq + 1,
     })
   },
 
@@ -94,7 +104,11 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     if (next === handle) return false
     useUiStore.getState().clearSelection()
     clearHints()
-    set({ handle: withScore(next, get().undoCount) })
+    set({
+      handle: withScore(next, get().undoCount),
+      movingIds: movedCardIds(handle.state, next.state),
+      moveSeq: get().moveSeq + 1,
+    })
     if (gameWon(next)) {
       useUiStore.getState().openPanelById('win')
     }
@@ -120,7 +134,12 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     const nextUndo = undoCount + 1
     useUiStore.getState().clearSelection()
     clearHints()
-    set({ handle: withScore(next, nextUndo), undoCount: nextUndo })
+    set({
+      handle: withScore(next, nextUndo),
+      undoCount: nextUndo,
+      movingIds: movedCardIds(handle.state, next.state),
+      moveSeq: get().moveSeq + 1,
+    })
   },
 
   redo: () => {
@@ -129,7 +148,11 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     if (next === handle) return
     useUiStore.getState().clearSelection()
     clearHints()
-    set({ handle: withScore(next, undoCount) })
+    set({
+      handle: withScore(next, undoCount),
+      movingIds: movedCardIds(handle.state, next.state),
+      moveSeq: get().moveSeq + 1,
+    })
   },
 
   restartDeal: () => {
@@ -141,6 +164,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       handle: withScore({ ...next, settings: settingsFromStore() }, 0),
       undoCount: 0,
       startedAt: Date.now(),
+      movingIds: [],
+      moveSeq: get().moveSeq + 1,
     })
   },
 
@@ -151,8 +176,13 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       return null
     }
     const { handle } = get()
-    const legal = hintableMoves(handle.state, handle.settings)
-    const ranked = rankedHints(handle.state, Math.max(1, legal.length), handle.settings)
+    const candidates = hintableMoves(handle.state, handle.settings)
+    const ranked = rankedHints(
+      handle.state,
+      Math.max(1, candidates.length),
+      handle.settings,
+      candidates,
+    )
     const moves = ranked.map((r) => r.move)
     ui.startHintPlayback(moves)
     return moves[0] ?? null

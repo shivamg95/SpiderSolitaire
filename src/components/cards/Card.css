@@ -34,6 +34,37 @@
   pointer-events: none;
 }
 
+.card--flying {
+  filter: drop-shadow(var(--shadow-lift));
+}
+
+.card-lift {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  perspective: 900px;
+}
+
+.card-flip {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  transform-style: preserve-3d;
+}
+
+.card-side {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.card-side--back {
+  transform: rotateY(180deg);
+}
+
 .card-inner {
   width: 100%;
   height: 100%;
@@ -43,7 +74,7 @@
   background: var(--card-face);
 }
 
-.card--down .card-inner {
+.card-side--back .card-inner {
   background: transparent;
   border-color: color-mix(in srgb, var(--neon) 35%, transparent);
 }
@@ -54,6 +85,20 @@
   height: 100%;
   color: var(--card-face-ink);
   background: linear-gradient(160deg, #ffffff 0%, var(--card-face) 100%);
+
+  /* Court figures use the traditional palette for every suit; only the pip
+     inside the panel picks up the red/black suit colour via currentColor. */
+  --court-ink: #221d24;
+  --court-paper: #fbf6ea;
+  --court-white: #ffffff;
+  --court-skin: #f5dcc0;
+  --court-gold: #e5b23c;
+  --court-red: #c9243f;
+  --court-blue: #35569f;
+  --court-green: #3f8f5c;
+  --court-hair: #7a4a2c;
+  --court-steel: #cbd3dd;
+  --court-wood: #9c6b3c;
 }
 
 .card-face--red {
@@ -67,17 +112,17 @@
   align-items: center;
   line-height: 1;
   font-weight: 700;
-  font-size: clamp(0.85rem, calc(var(--card-w, 72px) * 0.26), 2rem);
+  font-size: clamp(0.75rem, calc(var(--card-w, 72px) * 0.22), 1.7rem);
   font-variant-numeric: tabular-nums;
 }
 
 .card-index--tl {
   top: 3%;
-  left: 5%;
+  left: 4.5%;
 }
 
 .card-index--br {
-  right: 5%;
+  right: 4.5%;
   bottom: 3%;
   transform: rotate(180deg);
 }
@@ -96,7 +141,17 @@
   opacity: 0.92;
 }
 
-.card--compressed .card-suit-lg {
+/* Inset is tuned so the 120x260 court viewBox lands flush against the panel
+   edges at the fixed 2.5:3.5 card aspect, clearing the corner indices. */
+.card-court {
+  position: absolute;
+  inset: 6.7% 22%;
+  width: auto;
+  height: auto;
+}
+
+.card--compressed .card-suit-lg,
+.card--compressed .card-court {
   display: none;
 }
 
