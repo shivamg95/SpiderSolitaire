@@ -1,4 +1,4 @@
-import { memo, useEffect, useState } from 'react'
+import { memo, useCallback, useEffect, useState } from 'react'
 import clsx from 'clsx'
 import { motion, type Transition } from 'motion/react'
 import type { Card as CardModel } from '@/engine/types'
@@ -25,16 +25,25 @@ export interface CardProps {
   readonly selected?: boolean
   readonly dragging?: boolean
   readonly dimmed?: boolean
+  readonly broken?: boolean
   readonly interactive?: boolean
   readonly flying?: boolean
   readonly flightDelayMs?: number
   readonly reducedMotion?: boolean
-  readonly onPointerDown?: (event: React.PointerEvent) => void
+  /** Column index when the card sits in the tableau; null for stock/foundation. */
+  readonly column?: number | null
+  readonly indexInColumn?: number
+  readonly onCardPointerDown?: (
+    event: React.PointerEvent,
+    card: CardModel,
+    column: number,
+    indexInColumn: number,
+  ) => void
   readonly style?: React.CSSProperties
   readonly dragOffset?: { x: number; y: number }
 }
 
-function CardFace({ card }: { card: CardModel }) {
+function CardFace({ card, compressed }: { card: CardModel; compressed: boolean }) {
   const label = rankLabel(card.rank)
   const red = isRedSuit(card.suit)
   return (
@@ -43,11 +52,13 @@ function CardFace({ card }: { card: CardModel }) {
         <span>{label}</span>
         <SuitGlyph suit={card.suit} className="card-suit-sm" />
       </div>
-      {isCourtRank(card.rank) ? (
-        <CourtArt rank={card.rank} suit={card.suit} />
-      ) : (
-        <SuitGlyph suit={card.suit} className="card-suit-lg" />
-      )}
+      {!compressed ? (
+        isCourtRank(card.rank) ? (
+          <CourtArt rank={card.rank} suit={card.suit} />
+        ) : (
+          <SuitGlyph suit={card.suit} className="card-suit-lg" />
+        )
+      ) : null}
       <div className="card-index card-index--br">
         <span>{label}</span>
         <SuitGlyph suit={card.suit} className="card-suit-sm" />
@@ -57,38 +68,7 @@ function CardFace({ card }: { card: CardModel }) {
 }
 
 function CardBack() {
-  return (
-    <div className="card-back" aria-hidden>
-      <svg viewBox="0 0 100 140" className="card-back-svg">
-        <defs>
-          <linearGradient id="cb" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="var(--card-back-0)" />
-            <stop offset="100%" stopColor="var(--card-back-1)" />
-          </linearGradient>
-          <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
-            <path
-              d="M 10 0 L 0 0 0 10"
-              fill="none"
-              stroke="var(--neon)"
-              strokeOpacity="0.25"
-              strokeWidth="0.6"
-            />
-          </pattern>
-        </defs>
-        <rect x="4" y="4" width="92" height="132" rx="8" fill="url(#cb)" />
-        <rect x="10" y="10" width="80" height="120" rx="6" fill="url(#grid)" />
-        <circle
-          cx="50"
-          cy="70"
-          r="18"
-          fill="none"
-          stroke="var(--neon-2)"
-          strokeWidth="2"
-          opacity="0.7"
-        />
-      </svg>
-    </div>
-  )
+  return <div className="card-back" aria-hidden />
 }
 
 /**
@@ -127,11 +107,14 @@ export const Card = memo(function Card({
   selected = false,
   dragging = false,
   dimmed = false,
+  broken = false,
   interactive = false,
   flying = false,
   flightDelayMs = 0,
   reducedMotion = false,
-  onPointerDown,
+  column = null,
+  indexInColumn = 0,
+  onCardPointerDown,
   style: _style,
   dragOffset,
 }: CardProps) {
@@ -148,6 +131,39 @@ export const Card = memo(function Card({
     ? { type: 'tween', duration: 0 }
     : ({ ...transition, delay } as Transition)
 
+  const handlePointerDown = useCallback(
+    (event: React.PointerEvent) => {
+      if (!interactive || column === null || !onCardPointerDown) return
+      onCardPointerDown(event, card, column, indexInColumn)
+    },
+    [card, column, indexInColumn, interactive, onCardPointerDown],
+  )
+
+  const face = (
+    <motion.div
+      className="card-flip"
+      animate={{ rotateY: placement.faceUp ? 0 : 180 }}
+      transition={
+        flipping ? (flipTransition as Transition) : ({ duration: 0 } as Transition)
+      }
+    >
+      {placement.faceUp || flipping ? (
+        <div className="card-side card-side--front">
+          <div className="card-inner">
+            <CardFace card={card} compressed={placement.compressed} />
+          </div>
+        </div>
+      ) : null}
+      {!placement.faceUp || flipping ? (
+        <div className="card-side card-side--back">
+          <div className="card-inner">
+            <CardBack />
+          </div>
+        </div>
+      ) : null}
+    </motion.div>
+  )
+
   return (
     <motion.div
       className={clsx(
@@ -157,7 +173,9 @@ export const Card = memo(function Card({
         selected && 'card--selected',
         dragging && 'card--dragging',
         flying && 'card--flying',
+        flipping && 'card--flipping',
         dimmed && 'card--dimmed',
+        broken && 'card--broken',
         interactive && 'card--interactive',
         placement.compressed && 'card--compressed',
       )}
@@ -174,42 +192,21 @@ export const Card = memo(function Card({
         opacity: dimmed ? 0.45 : 1,
       }}
       transition={positionTransition}
-      onPointerDown={onPointerDown}
+      onPointerDown={interactive ? handlePointerDown : undefined}
       data-card-id={card.id}
       data-face={placement.faceUp ? 'up' : 'down'}
     >
-      <motion.div
-        className="card-lift"
-        animate={{ y: arcLift ? [0, arcLift, 0] : 0 }}
-        transition={
-          arcLift
-            ? ({ ...arcTransition, delay } as Transition)
-            : ({ duration: 0 } as Transition)
-        }
-      >
+      {arcLift ? (
         <motion.div
-          className="card-flip"
-          animate={{ rotateY: placement.faceUp ? 0 : 180 }}
-          transition={
-            flipping ? (flipTransition as Transition) : ({ duration: 0 } as Transition)
-          }
+          className="card-lift"
+          animate={{ y: [0, arcLift, 0] }}
+          transition={{ ...arcTransition, delay } as Transition}
         >
-          {placement.faceUp || flipping ? (
-            <div className="card-side card-side--front">
-              <div className="card-inner">
-                <CardFace card={card} />
-              </div>
-            </div>
-          ) : null}
-          {!placement.faceUp || flipping ? (
-            <div className="card-side card-side--back">
-              <div className="card-inner">
-                <CardBack />
-              </div>
-            </div>
-          ) : null}
+          {face}
         </motion.div>
-      </motion.div>
+      ) : (
+        <div className="card-lift">{face}</div>
+      )}
     </motion.div>
   )
 })

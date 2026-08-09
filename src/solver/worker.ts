@@ -1,7 +1,8 @@
-import { createGame, fold } from '@/engine/game'
+import { createGame, fold, hintableMoves } from '@/engine/game'
 import { applyMove } from '@/engine/moves'
 import { isWon } from '@/engine/rules'
-import type { Difficulty, GameState, Move } from '@/engine/types'
+import type { Difficulty, GameSettings, GameState, Move } from '@/engine/types'
+import { DEFAULT_GAME_SETTINGS } from '@/engine/types'
 import { rankedHints, search } from './search'
 import type { SearchBudget, SearchStatus } from './search'
 
@@ -19,7 +20,11 @@ export type SolverRequest =
   | {
       readonly id: string
       readonly method: 'hint'
-      readonly params: { readonly state: GameState; readonly limit?: number }
+      readonly params: {
+        readonly state: GameState
+        readonly limit?: number
+        readonly settings?: GameSettings
+      }
     }
   | {
       readonly id: string
@@ -65,7 +70,14 @@ function handle(req: SolverRequest): SolverResponse {
     }
 
     if (req.method === 'hint') {
-      const hints = rankedHints(req.params.state, req.params.limit ?? 3)
+      const settings = req.params.settings ?? DEFAULT_GAME_SETTINGS
+      const candidates = hintableMoves(req.params.state, settings)
+      const hints = rankedHints(
+        req.params.state,
+        req.params.limit ?? Math.max(1, candidates.length),
+        settings,
+        candidates,
+      )
       return { id: req.id, result: hints }
     }
 

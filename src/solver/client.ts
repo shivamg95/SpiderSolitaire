@@ -1,4 +1,4 @@
-import type { Difficulty, GameState, Move } from '@/engine/types'
+import type { Difficulty, GameSettings, GameState, Move } from '@/engine/types'
 import type { SearchBudget, SearchStatus } from './search'
 
 interface Pending {
@@ -18,6 +18,12 @@ interface SolverResponseErr {
 
 type SolverResponse = SolverResponseOk | SolverResponseErr
 
+export interface RankedHint {
+  readonly move: Move
+  readonly explanation: string
+  readonly confidence: 'high' | 'medium' | 'low'
+}
+
 export class SolverClient {
   private worker: Worker | null = null
   private seq = 0
@@ -35,6 +41,14 @@ export class SolverClient {
         this.pending.delete(msg.id)
         if ('error' in msg) p.reject(new Error(msg.error))
         else p.resolve(msg.result)
+      }
+      this.worker.onerror = () => {
+        for (const p of this.pending.values()) {
+          p.reject(new Error('solver worker error'))
+        }
+        this.pending.clear()
+        this.worker?.terminate()
+        this.worker = null
       }
     }
     return this.worker
@@ -61,8 +75,11 @@ export class SolverClient {
     }) as Promise<SearchStatus>
   }
 
-  hint(state: GameState, limit = 3) {
-    return this.call({ method: 'hint', params: { state, limit } })
+  hint(state: GameState, limit?: number, settings?: GameSettings): Promise<RankedHint[]> {
+    return this.call({
+      method: 'hint',
+      params: { state, limit, settings },
+    }) as Promise<RankedHint[]>
   }
 
   findWinnable(difficulty: Difficulty, budgetMs: number, startSeed?: number) {

@@ -113,8 +113,8 @@ export function Board() {
   const preset = useMotionPreset(reducedMotion)
   const metrics = useMemo(() => computeBoardMetrics(viewport), [viewport])
   const placements = useMemo(
-    () => computeLayout(handle.state, viewport),
-    [handle.state, viewport],
+    () => computeLayout(handle.state, viewport, {}, metrics),
+    [handle.state, viewport, metrics],
   )
 
   const dropZonesRef = useRef<ColumnDropZonesHandle>(null)
@@ -122,8 +122,46 @@ export function Board() {
   const [draggingIds, setDraggingIds] = useState<ReadonlySet<string>>(new Set())
   const [targetColumn, setTargetColumn] = useState<number | null>(null)
   const liftRef = useRef(0)
+  const pendingOffsetRef = useRef<{ x: number; y: number } | null>(null)
+  const pendingColumnRef = useRef<number | null>(null)
+  const dragRafRef = useRef<number | null>(null)
+
+  const flushDragFrame = useCallback(() => {
+    dragRafRef.current = null
+    if (pendingOffsetRef.current) {
+      setDragOffset(pendingOffsetRef.current)
+      pendingOffsetRef.current = null
+    }
+    setTargetColumn(pendingColumnRef.current)
+  }, [])
+
+  const scheduleDragFrame = useCallback(() => {
+    if (dragRafRef.current !== null) return
+    dragRafRef.current = window.requestAnimationFrame(flushDragFrame)
+  }, [flushDragFrame])
+
+  const resetDragVisuals = useCallback(() => {
+    if (dragRafRef.current !== null) {
+      window.cancelAnimationFrame(dragRafRef.current)
+      dragRafRef.current = null
+    }
+    pendingOffsetRef.current = null
+    pendingColumnRef.current = null
+    setDraggingIds(new Set())
+    setDragOffset({ x: 0, y: 0 })
+    setTargetColumn(null)
+    liftRef.current = 0
+  }, [])
 
   useKeyboardShortcuts()
+
+  useEffect(() => {
+    return () => {
+      if (dragRafRef.current !== null) {
+        window.cancelAnimationFrame(dragRafRef.current)
+      }
+    }
+  }, [])
 
   // Cards keep an elevated z-index and an arced path until their flight lands,
   // otherwise a move that travels leftwards slides behind the columns it crosses.
@@ -168,17 +206,20 @@ export function Board() {
     getColumnRects: () => dropZonesRef.current?.getRects() ?? [],
     maxDropDistance: () => metrics.cardWidth * 1.5,
     onPointerMove: (_point, column) => {
-      setTargetColumn(column)
+      pendingColumnRef.current = column
+      scheduleDragFrame()
     },
     onCommand: (command, state) => {
       if (command.type === 'startDrag') {
         liftRef.current = command.liftY
         setDraggingIds(new Set(command.cardIds))
         if (state.phase === 'dragging') {
-          setDragOffset({ x: state.dx, y: state.dy + command.liftY })
+          pendingOffsetRef.current = { x: state.dx, y: state.dy + command.liftY }
+          scheduleDragFrame()
         }
       } else if (command.type === 'move') {
-        setDragOffset({ x: command.dx, y: command.dy + liftRef.current })
+        pendingOffsetRef.current = { x: command.dx, y: command.dy + liftRef.current }
+        scheduleDragFrame()
       } else if (command.type === 'drop') {
         if (
           command.targetColumn !== null &&
@@ -191,10 +232,7 @@ export function Board() {
             count: command.count,
           })
         }
-        setDraggingIds(new Set())
-        setDragOffset({ x: 0, y: 0 })
-        setTargetColumn(null)
-        liftRef.current = 0
+        resetDragVisuals()
       } else if (command.type === 'tap') {
         const from = command.fromColumn as ColumnIndex
         setSelectedRun({
@@ -203,16 +241,10 @@ export function Board() {
           cardIds: command.cardIds as never,
         })
         tapMove(from, command.count)
-        setDraggingIds(new Set())
-        setDragOffset({ x: 0, y: 0 })
-        setTargetColumn(null)
-        liftRef.current = 0
+        resetDragVisuals()
       } else if (command.type === 'cancel') {
         clearSelection()
-        setDraggingIds(new Set())
-        setDragOffset({ x: 0, y: 0 })
-        setTargetColumn(null)
-        liftRef.current = 0
+        resetDragVisuals()
       }
     },
   })

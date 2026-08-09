@@ -26,12 +26,35 @@ import type {
   Move,
 } from '@/engine/types'
 import { DEFAULT_GAME_SETTINGS } from '@/engine/types'
+import { SolverClient, type RankedHint } from '@/solver/client'
 import { rankedHints } from '@/solver/search'
 import { useSettingsStore } from './settingsStore'
 import { useUiStore } from './uiStore'
 
 /** Breathing room between a run landing and the sweep starting. */
 const COLLECT_GAP_MS = 60
+
+let solverClient: SolverClient | null = null
+let hintGeneration = 0
+
+function getSolverClient(): SolverClient {
+  solverClient ??= new SolverClient()
+  return solverClient
+}
+
+function invalidatePendingHints(): void {
+  hintGeneration += 1
+}
+
+function syncRankedHints(handle: GameHandle): RankedHint[] {
+  const candidates = hintableMoves(handle.state, handle.settings)
+  return rankedHints(
+    handle.state,
+    Math.max(1, candidates.length),
+    handle.settings,
+    candidates,
+  )
+}
 
 function randomSeed(): number {
   return (Math.random() * 0xffffffff) >>> 0
@@ -55,6 +78,7 @@ function withScore(handle: GameHandle, undoCount: number): GameHandle {
 }
 
 function clearHints(): void {
+  invalidatePendingHints()
   useUiStore.getState().stopHintPlayback()
 }
 
@@ -86,7 +110,8 @@ export interface GameStoreState {
   undo: () => void
   redo: () => void
   restartDeal: () => void
-  requestHint: () => Move | null
+  /** Starts async hint playback; cancels an in-flight hint when called again. */
+  requestHint: () => void
   canUndo: () => boolean
   canRedo: () => boolean
   canDealStock: () => boolean
@@ -236,19 +261,29 @@ export const useGameStore = create<GameStoreState>((set, get) => {
       const ui = useUiStore.getState()
       if (ui.hintPlaying) {
         ui.stopHintPlayback()
-        return null
+        invalidatePendingHints()
+        return
       }
       const { handle } = get()
-      const candidates = hintableMoves(handle.state, handle.settings)
-      const ranked = rankedHints(
-        handle.state,
-        Math.max(1, candidates.length),
-        handle.settings,
-        candidates,
-      )
-      const moves = ranked.map((r) => r.move)
-      ui.startHintPlayback(moves)
-      return moves[0] ?? null
+      const gen = ++hintGeneration
+      const applyHints = (ranked: RankedHint[]) => {
+        if (gen !== hintGeneration) return
+        ui.startHintPlayback(ranked.map((r) => r.move))
+      }
+
+      void (async () => {
+        try {
+          const ranked = await getSolverClient().hint(
+            handle.state,
+            undefined,
+            handle.settings,
+          )
+          applyHints(ranked)
+        } catch {
+          if (gen !== hintGeneration) return
+          applyHints(syncRankedHints(handle))
+        }
+      })()
     },
 
     canUndo: () => !get().collecting && get().handle.moveLog.length > 0,

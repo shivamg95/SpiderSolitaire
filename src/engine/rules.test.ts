@@ -7,6 +7,7 @@ import {
   isRun,
   isWon,
   legalMoves,
+  lockedFaceUpRunVisual,
   movableRunLength,
 } from './rules'
 import { parseBoard } from './testing/ascii'
@@ -39,6 +40,46 @@ describe('movableRunLength', () => {
     const column = [card('S', 9, false), ...cardsFromTokens(['S8', 'S7', 'S6'])]
     expect(movableRunLength(column)).toBe(3)
     expect(movableRunLength([])).toBe(0)
+  })
+})
+
+describe('lockedFaceUpRunVisual', () => {
+  it('returns nothing for a clean movable run', () => {
+    const column = cardsFromTokens(['SK', 'SQ', 'SJ'])
+    expect(lockedFaceUpRunVisual(column)).toEqual({ lockedIds: [], breakId: null })
+    expect(lockedFaceUpRunVisual([])).toEqual({ lockedIds: [], breakId: null })
+  })
+
+  it('marks locked face-ups and the break on a suit mismatch', () => {
+    const column = cardsFromTokens(['HK', 'SQ', 'SJ'])
+    const visual = lockedFaceUpRunVisual(column)
+    expect(movableRunLength(column)).toBe(2)
+    expect(visual.lockedIds).toEqual([column[0]!.id])
+    expect(visual.breakId).toBe(column[0]!.id)
+  })
+
+  it('marks locked face-ups and the break on a rank gap', () => {
+    const column = cardsFromTokens(['SK', 'SJ', 'S10'])
+    const visual = lockedFaceUpRunVisual(column)
+    expect(movableRunLength(column)).toBe(2)
+    expect(visual.lockedIds).toEqual([column[0]!.id])
+    expect(visual.breakId).toBe(column[0]!.id)
+  })
+
+  it('does not put a break marker on a face-down card', () => {
+    const column = [card('S', 9, false), ...cardsFromTokens(['S8', 'S7'])]
+    const visual = lockedFaceUpRunVisual(column)
+    expect(movableRunLength(column)).toBe(2)
+    expect(visual.lockedIds).toEqual([])
+    expect(visual.breakId).toBeNull()
+  })
+
+  it('dims every locked face-up above a longer break', () => {
+    const column = cardsFromTokens(['S5', 'H4', 'S3', 'S2'])
+    const visual = lockedFaceUpRunVisual(column)
+    expect(movableRunLength(column)).toBe(2)
+    expect(visual.lockedIds).toEqual([column[0]!.id, column[1]!.id])
+    expect(visual.breakId).toBe(column[1]!.id)
   })
 })
 

@@ -4,44 +4,83 @@
   left: 0;
   border-radius: calc(var(--radius-sm) + 2px);
   transform-origin: center top;
-  will-change: transform;
   touch-action: none;
   cursor: grab;
   user-select: none;
   -webkit-user-select: none;
-  filter: drop-shadow(var(--shadow-card));
+  box-shadow: var(--shadow-card);
 }
 
 .card--dragging {
   cursor: grabbing;
-  filter: drop-shadow(var(--shadow-lift));
+  box-shadow: var(--shadow-lift);
   will-change: transform;
+}
+
+.card--flying,
+.card--flipping {
+  will-change: transform;
+}
+
+.card--flying {
+  box-shadow: var(--shadow-lift);
+}
+
+.card--flipping {
+  box-shadow: none;
 }
 
 .card--hint {
   box-shadow:
+    var(--shadow-card),
     0 0 0 2px var(--neon),
     0 0 18px var(--neon-glow);
 }
 
 .card--selected {
   box-shadow:
+    var(--shadow-card),
     0 0 0 2px var(--neon-2),
     0 0 16px color-mix(in srgb, var(--neon-2) 45%, transparent);
 }
 
 .card--dimmed {
   pointer-events: none;
+  cursor: default;
 }
 
-.card--flying {
-  filter: drop-shadow(var(--shadow-lift));
+.card--dimmed .card-inner {
+  filter: brightness(0.72);
+}
+
+.card--broken {
+  box-shadow:
+    var(--shadow-card),
+    inset 0 2px 0 var(--neon),
+    0 0 12px var(--neon-glow);
+}
+
+.card--broken.card--hint {
+  box-shadow:
+    var(--shadow-card),
+    0 0 0 2px var(--neon),
+    0 0 18px var(--neon-glow);
+}
+
+.card--broken.card--selected {
+  box-shadow:
+    var(--shadow-card),
+    0 0 0 2px var(--neon-2),
+    0 0 16px color-mix(in srgb, var(--neon-2) 45%, transparent);
 }
 
 .card-lift {
   width: 100%;
   height: 100%;
   border-radius: inherit;
+}
+
+.card--flipping .card-lift {
   perspective: 900px;
 }
 
@@ -50,6 +89,7 @@
   width: 100%;
   height: 100%;
   border-radius: inherit;
+  /* Needed so the back face's rotateY(180) composes correctly while idle. */
   transform-style: preserve-3d;
 }
 
@@ -166,13 +206,45 @@
 }
 
 .card-back {
+  position: relative;
   width: 100%;
   height: 100%;
-  background: var(--card-back-0);
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--card-back-0) 0%, var(--card-back-1) 100%);
 }
 
-.card-back-svg {
-  width: 100%;
-  height: 100%;
-  display: block;
+.card-back::before {
+  content: '';
+  position: absolute;
+  inset: 8%;
+  border-radius: calc(var(--radius-sm) - 2px);
+  border: 1.5px solid color-mix(in srgb, var(--neon) 35%, transparent);
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0,
+      transparent 9px,
+      color-mix(in srgb, var(--neon) 25%, transparent) 9px,
+      color-mix(in srgb, var(--neon) 25%, transparent) 10px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0,
+      transparent 9px,
+      color-mix(in srgb, var(--neon) 25%, transparent) 9px,
+      color-mix(in srgb, var(--neon) 25%, transparent) 10px
+    );
+}
+
+.card-back::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 36%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--neon-2) 70%, transparent);
+  box-sizing: border-box;
 }

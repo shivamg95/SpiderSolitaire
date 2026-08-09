@@ -41,10 +41,21 @@ export function usePointerDrag(options: UsePointerDragOptions): PointerDragApi {
   const enabled = options.enabled ?? true
   const stateRef = useRef<DragState>(createDragState())
   const optionsRef = useRef(options)
+  const rectsCacheRef = useRef<readonly ColumnRect[] | null>(null)
 
   useEffect(() => {
     optionsRef.current = options
   })
+
+  useEffect(() => {
+    const invalidate = () => {
+      rectsCacheRef.current = null
+    }
+    window.addEventListener('resize', invalidate)
+    return () => {
+      window.removeEventListener('resize', invalidate)
+    }
+  }, [])
 
   const emit = useCallback((command: DragCommand, state: DragState) => {
     optionsRef.current.onCommand(command, state)
@@ -60,6 +71,13 @@ export function usePointerDrag(options: UsePointerDragOptions): PointerDragApi {
     },
     [config, emit],
   )
+
+  const columnRects = useCallback((): readonly ColumnRect[] => {
+    if (rectsCacheRef.current) return rectsCacheRef.current
+    const rects = optionsRef.current.getColumnRects()
+    rectsCacheRef.current = rects
+    return rects
+  }, [])
 
   useEffect(() => {
     const resolveMaxDistance = () => {
@@ -82,7 +100,7 @@ export function usePointerDrag(options: UsePointerDragOptions): PointerDragApi {
         point,
         time: e.timeStamp,
       })
-      const rects = optionsRef.current.getColumnRects()
+      const rects = columnRects()
       const targetColumn = nearestColumn(point, rects, resolveMaxDistance())
       optionsRef.current.onPointerMove?.(point, targetColumn)
     }
@@ -97,7 +115,7 @@ export function usePointerDrag(options: UsePointerDragOptions): PointerDragApi {
       ) {
         return
       }
-      const rects = optionsRef.current.getColumnRects()
+      const rects = columnRects()
       const targetColumn = nearestColumn(
         { x: e.clientX, y: e.clientY },
         rects,
@@ -112,6 +130,7 @@ export function usePointerDrag(options: UsePointerDragOptions): PointerDragApi {
       })
       // Settle after drop/tap
       apply({ type: 'settle' })
+      rectsCacheRef.current = null
     }
 
     const onCancel = (e: PointerEvent) => {
@@ -121,6 +140,7 @@ export function usePointerDrag(options: UsePointerDragOptions): PointerDragApi {
         time: e.timeStamp,
       })
       apply({ type: 'settle' })
+      rectsCacheRef.current = null
     }
 
     window.addEventListener('pointermove', onMove)
@@ -131,7 +151,7 @@ export function usePointerDrag(options: UsePointerDragOptions): PointerDragApi {
       window.removeEventListener('pointerup', onUp)
       window.removeEventListener('pointercancel', onCancel)
     }
-  }, [apply])
+  }, [apply, columnRects])
 
   const onPointerDown = useCallback(
     (event: React.PointerEvent, target: DragTarget) => {
@@ -139,6 +159,8 @@ export function usePointerDrag(options: UsePointerDragOptions): PointerDragApi {
       if (event.button !== 0) return
       event.preventDefault()
       event.currentTarget.setPointerCapture?.(event.pointerId)
+      // Snapshot hit targets once per gesture so pointermove never forces layout.
+      rectsCacheRef.current = optionsRef.current.getColumnRects()
       apply({
         type: 'pointerdown',
         pointerId: event.pointerId,

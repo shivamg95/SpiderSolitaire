@@ -332,8 +332,9 @@ export function computeLayout(
   state: GameState,
   viewport: ViewportSize,
   settings: LayoutSettings = {},
+  metricsInput?: BoardMetrics,
 ): Map<CardId, CardPlacement> {
-  const metrics = computeBoardMetrics(viewport, settings)
+  const metrics = metricsInput ?? computeBoardMetrics(viewport, settings)
   const map = new Map<CardId, CardPlacement>()
   const safeBottom = viewport.safeBottom ?? 0
 

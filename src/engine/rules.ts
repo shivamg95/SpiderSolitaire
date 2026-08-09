@@ -30,6 +30,31 @@ export function movableRunLength(column: readonly Card[]): number {
   return length
 }
 
+/**
+ * Face-up cards above the movable same-suit suffix — visible but not pickable.
+ * The break card is the face-up card immediately above that suffix (if any).
+ */
+export function lockedFaceUpRunVisual(column: readonly Card[]): {
+  lockedIds: readonly Card['id'][]
+  breakId: Card['id'] | null
+} {
+  const movable = movableRunLength(column)
+  if (column.length === 0 || movable >= column.length) {
+    return { lockedIds: [], breakId: null }
+  }
+
+  const lockedEnd = column.length - movable
+  const lockedIds: Card['id'][] = []
+  for (let i = 0; i < lockedEnd; i++) {
+    const card = column[i]!
+    if (card.faceUp) lockedIds.push(card.id)
+  }
+
+  const breakCard = column[lockedEnd - 1]
+  const breakId = breakCard?.faceUp ? breakCard.id : null
+  return { lockedIds, breakId }
+}
+
 export function canPlace(run: readonly Card[], destColumn: readonly Card[]): boolean {
   if (run.length === 0 || !isRun(run)) return false
   if (destColumn.length === 0) return true
