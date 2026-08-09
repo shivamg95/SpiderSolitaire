@@ -9,6 +9,6 @@ body,
 body {
   overscroll-behavior: none;
   -webkit-tap-highlight-color: transparent;
-  background: #070b14;
-  color: #e8f1ff;
+  background: var(--felt-0, #070b14);
+  color: var(--text, #e8f1ff);
 }

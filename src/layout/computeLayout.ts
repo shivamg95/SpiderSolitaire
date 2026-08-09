@@ -4,7 +4,6 @@ import {
   BOARD_PAD_Y,
   CARD_ASPECT,
   COLUMN_COUNT,
-  COLUMN_GAP_RATIO,
   FACE_DOWN_FLOOR,
   FACE_DOWN_OVERLAP,
   FACE_UP_FLOOR,
@@ -13,6 +12,7 @@ import {
   FOUNDATION_STEP_RATIO,
   MAX_CARD_HEIGHT_RATIO,
   MAX_CARD_WIDTH,
+  MAX_GAP_RATIO,
   MIN_CARD_WIDTH,
   MIN_COLUMN_GAP,
   MIN_FOUNDATION_STEP,
@@ -21,6 +21,7 @@ import {
   NARROW_LAYOUT_BREAKPOINT,
   RAIL_CARD_SCALE,
   RAIL_GAP,
+  TARGET_GAP_RATIO,
 } from './constants'
 
 export interface ViewportSize {
@@ -101,61 +102,105 @@ export function computeBoardMetrics(
   const innerW = Math.max(0, boardWidth - safeLeft - safeRight - 2 * padX)
   const innerH = Math.max(0, boardHeight - safeTop - safeBottom - 2 * padY)
 
+  // First-pass card estimate to size the rail proportionally.
+  const roughTableau = layoutMode === 'rail' ? innerW * 0.88 : innerW
+  const roughW = clamp(
+    roughTableau / (COLUMN_COUNT + (COLUMN_COUNT - 1) * TARGET_GAP_RATIO),
+    MIN_CARD_WIDTH,
+    MAX_CARD_WIDTH,
+  )
+
   let railWidth: number
   let railHeight: number
   let tableauWidth: number
   let tableauHeight: number
 
   if (layoutMode === 'rail') {
-    const provisional =
-      (innerW - (COLUMN_COUNT + 1 - 1) * Math.max(MIN_COLUMN_GAP, innerW * 0.01)) /
-      (COLUMN_COUNT + 1)
-    railWidth = clamp(provisional, MIN_RAIL_WIDTH, MAX_RAIL_WIDTH)
+    railWidth = clamp(roughW * RAIL_CARD_SCALE + 16, MIN_RAIL_WIDTH, MAX_RAIL_WIDTH)
     railHeight = innerH
     tableauWidth = Math.max(0, innerW - railWidth - RAIL_GAP)
     tableauHeight = innerH
   } else {
     railWidth = innerW
-    const provisionalCardH = Math.min(
-      MAX_CARD_WIDTH / CARD_ASPECT,
-      innerH * MAX_CARD_HEIGHT_RATIO,
-    )
-    railHeight = clamp(provisionalCardH * RAIL_CARD_SCALE + padY, 64, 120)
+    railHeight = clamp((roughW / CARD_ASPECT) * RAIL_CARD_SCALE + padY * 2, 72, 140)
     tableauWidth = innerW
     tableauHeight = Math.max(0, innerH - railHeight - RAIL_GAP)
   }
 
-  const gapGuess = Math.max(MIN_COLUMN_GAP, tableauWidth * COLUMN_GAP_RATIO * 0.12)
-  let columnWidth = (tableauWidth - (COLUMN_COUNT - 1) * gapGuess) / COLUMN_COUNT
-  columnWidth = clamp(columnWidth, MIN_CARD_WIDTH, MAX_CARD_WIDTH)
-
-  let columnGap =
-    COLUMN_COUNT > 1
-      ? Math.max(
-          MIN_COLUMN_GAP,
-          (tableauWidth - columnWidth * COLUMN_COUNT) / (COLUMN_COUNT - 1),
-        )
-      : 0
-
-  columnWidth = (tableauWidth - (COLUMN_COUNT - 1) * columnGap) / COLUMN_COUNT
-  columnWidth = clamp(columnWidth, MIN_CARD_WIDTH, MAX_CARD_WIDTH)
-
-  let cardWidth = columnWidth
+  const gapFactor = COLUMN_COUNT + (COLUMN_COUNT - 1) * TARGET_GAP_RATIO
+  let cardWidth = clamp(tableauWidth / gapFactor, MIN_CARD_WIDTH, MAX_CARD_WIDTH)
   let cardHeight = cardWidth / CARD_ASPECT
   const maxH = tableauHeight * MAX_CARD_HEIGHT_RATIO
   if (cardHeight > maxH && maxH > 0) {
     cardHeight = maxH
-    cardWidth = cardHeight * CARD_ASPECT
-    columnGap =
-      COLUMN_COUNT > 1
-        ? Math.max(
-            MIN_COLUMN_GAP,
-            (tableauWidth - cardWidth * COLUMN_COUNT) / (COLUMN_COUNT - 1),
-          )
-        : 0
+    cardWidth = clamp(cardHeight * CARD_ASPECT, MIN_CARD_WIDTH, MAX_CARD_WIDTH)
+    cardHeight = cardWidth / CARD_ASPECT
   }
 
-  const originX = safeLeft + padX
+  let columnGap =
+    COLUMN_COUNT > 1
+      ? clamp(cardWidth * TARGET_GAP_RATIO, MIN_COLUMN_GAP, cardWidth * MAX_GAP_RATIO)
+      : 0
+
+  let packWidth = cardWidth * COLUMN_COUNT + columnGap * Math.max(0, COLUMN_COUNT - 1)
+  if (packWidth > tableauWidth && COLUMN_COUNT > 1) {
+    const maxGapBudget = Math.max(0, tableauWidth - MIN_CARD_WIDTH * COLUMN_COUNT)
+    columnGap = clamp(
+      maxGapBudget / (COLUMN_COUNT - 1),
+      MIN_COLUMN_GAP,
+      cardWidth * MAX_GAP_RATIO,
+    )
+    cardWidth = clamp(
+      (tableauWidth - columnGap * (COLUMN_COUNT - 1)) / COLUMN_COUNT,
+      MIN_CARD_WIDTH,
+      MAX_CARD_WIDTH,
+    )
+    cardHeight = cardWidth / CARD_ASPECT
+    columnGap = clamp(
+      cardWidth * TARGET_GAP_RATIO,
+      MIN_COLUMN_GAP,
+      cardWidth * MAX_GAP_RATIO,
+    )
+    packWidth = cardWidth * COLUMN_COUNT + columnGap * (COLUMN_COUNT - 1)
+    if (packWidth > tableauWidth) {
+      columnGap = Math.max(
+        MIN_COLUMN_GAP,
+        (tableauWidth - cardWidth * COLUMN_COUNT) / (COLUMN_COUNT - 1),
+      )
+      packWidth = cardWidth * COLUMN_COUNT + columnGap * (COLUMN_COUNT - 1)
+    }
+  }
+
+  // Sync rail to final card size (rail mode only).
+  if (layoutMode === 'rail') {
+    railWidth = clamp(cardWidth * RAIL_CARD_SCALE + 16, MIN_RAIL_WIDTH, MAX_RAIL_WIDTH)
+    tableauWidth = Math.max(0, innerW - railWidth - RAIL_GAP)
+    packWidth = cardWidth * COLUMN_COUNT + columnGap * Math.max(0, COLUMN_COUNT - 1)
+    if (packWidth > tableauWidth && COLUMN_COUNT > 1) {
+      cardWidth = clamp(
+        (tableauWidth - columnGap * (COLUMN_COUNT - 1)) / COLUMN_COUNT,
+        MIN_CARD_WIDTH,
+        MAX_CARD_WIDTH,
+      )
+      cardHeight = cardWidth / CARD_ASPECT
+      columnGap = clamp(
+        cardWidth * TARGET_GAP_RATIO,
+        MIN_COLUMN_GAP,
+        cardWidth * MAX_GAP_RATIO,
+      )
+      packWidth = cardWidth * COLUMN_COUNT + columnGap * (COLUMN_COUNT - 1)
+      if (packWidth > tableauWidth) {
+        columnGap = Math.max(
+          MIN_COLUMN_GAP,
+          (tableauWidth - cardWidth * COLUMN_COUNT) / (COLUMN_COUNT - 1),
+        )
+        packWidth = cardWidth * COLUMN_COUNT + columnGap * (COLUMN_COUNT - 1)
+      }
+    }
+  }
+
+  const tableauOriginX = safeLeft + padX
+  const originX = tableauOriginX + Math.max(0, (tableauWidth - packWidth) / 2)
   const columnsY = safeTop + padY
   const columnXs = Array.from({ length: COLUMN_COUNT }, (_, i) => {
     return originX + i * (cardWidth + columnGap)
@@ -173,7 +218,7 @@ export function computeBoardMetrics(
   let foundationYs: number[]
 
   if (layoutMode === 'rail') {
-    railX = originX + tableauWidth + RAIL_GAP
+    railX = tableauOriginX + tableauWidth + RAIL_GAP
     railY = columnsY
     foundationX = railX + Math.max(0, (railWidth - railCardWidth) / 2)
     stockX = foundationX
@@ -182,12 +227,11 @@ export function computeBoardMetrics(
       return columnsY + f * foundationStep
     })
   } else {
-    railX = originX
+    railX = tableauOriginX
     railY = columnsY + tableauHeight + RAIL_GAP
     foundationX = railX
     stockX = railX + railWidth - railCardWidth
     stockY = railY + Math.max(0, (railHeight - railCardHeight) / 2)
-    // Horizontal stack for bottom bar: offset each completed set slightly right + down
     foundationYs = Array.from({ length: FOUNDATION_SLOTS }, (_, f) => {
       return stockY + f * Math.min(foundationStep, 8)
     })
@@ -268,6 +312,20 @@ function stackOffsets(
     offsets: ideal.map((o, i) => o + (floorOffsets[i]! - o) * mix),
     compressed: mix > 0.35,
   }
+}
+
+/** Y where a card would land when dropped onto a destination column. */
+export function columnAttachY(
+  metrics: BoardMetrics,
+  destCards: readonly Card[],
+  availableColumnHeight: number,
+): number {
+  if (destCards.length === 0) return metrics.columnsY
+  const { offsets } = stackOffsets(destCards, metrics.cardHeight, availableColumnHeight)
+  const last = offsets[offsets.length - 1] ?? 0
+  const top = destCards[destCards.length - 1]!
+  const step = metrics.cardHeight * (top.faceUp ? FACE_UP_OVERLAP : FACE_DOWN_OVERLAP)
+  return metrics.columnsY + last + step
 }
 
 export function computeLayout(

@@ -18,9 +18,15 @@ export interface SideRailProps {
   readonly metrics: BoardMetrics
   readonly foundationsFilled: number
   readonly panelOpen: boolean
+  readonly pulseDeal?: boolean
 }
 
-export function SideRail({ metrics, foundationsFilled, panelOpen }: SideRailProps) {
+export function SideRail({
+  metrics,
+  foundationsFilled,
+  panelOpen,
+  pulseDeal = false,
+}: SideRailProps) {
   const handle = useGameStore((s) => s.handle)
   const startedAt = useGameStore((s) => s.startedAt)
   const undo = useGameStore((s) => s.undo)
@@ -145,7 +151,7 @@ export function SideRail({ metrics, foundationsFilled, panelOpen }: SideRailProp
           width={metrics.railCardWidth}
           height={metrics.railCardHeight}
           disabled={dealDisabled}
-          pulse={false}
+          pulse={pulseDeal}
           onDeal={() => {
             if (panelOpen) return
             dealStock()

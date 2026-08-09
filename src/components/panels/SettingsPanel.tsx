@@ -1,9 +1,15 @@
 import { useSettingsStore } from '@/state/settingsStore'
 import { useGameStore } from '@/state/gameStore'
 import type { Difficulty } from '@/engine/types'
-import { THEMES, type ThemeId } from '@/theme/themes'
+import { APPEARANCES, THEMES, type AppearanceId, type ThemeId } from '@/theme/themes'
 import { Panel } from '@/components/panels/Panel'
 import { useUiStore } from '@/state/uiStore'
+
+const APPEARANCE_LABELS: Record<AppearanceId, string> = {
+  system: 'System',
+  light: 'Light',
+  dark: 'Dark',
+}
 
 export function SettingsPanel() {
   const open = useUiStore((s) => s.openPanel === 'settings')
@@ -13,6 +19,8 @@ export function SettingsPanel() {
   const setDifficulty = useSettingsStore((s) => s.setDifficulty)
   const theme = useSettingsStore((s) => s.theme)
   const setTheme = useSettingsStore((s) => s.setTheme)
+  const appearance = useSettingsStore((s) => s.appearance)
+  const setAppearance = useSettingsStore((s) => s.setAppearance)
   const allowDealWithEmptyColumn = useSettingsStore((s) => s.allowDealWithEmptyColumn)
   const setAllowDealWithEmptyColumn = useSettingsStore(
     (s) => s.setAllowDealWithEmptyColumn,
@@ -41,6 +49,21 @@ export function SettingsPanel() {
           <option value={1}>1 suit</option>
           <option value={2}>2 suits</option>
           <option value={4}>4 suits</option>
+        </select>
+      </label>
+      <label className="settings-row">
+        <span>Appearance</span>
+        <select
+          value={appearance}
+          onChange={(e) => {
+            setAppearance(e.target.value as AppearanceId)
+          }}
+        >
+          {APPEARANCES.map((a) => (
+            <option key={a} value={a}>
+              {APPEARANCE_LABELS[a]}
+            </option>
+          ))}
         </select>
       </label>
       <label className="settings-row">

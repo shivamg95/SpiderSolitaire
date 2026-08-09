@@ -12,9 +12,13 @@ export const FACE_UP_FLOOR = 0.13
 export const COLUMN_COUNT = 10
 export const FOUNDATION_SLOTS = 8
 
-export const MAX_CARD_WIDTH = 96
+export const MAX_CARD_WIDTH = 160
 export const MIN_CARD_WIDTH = 42
-export const COLUMN_GAP_RATIO = 0.08
+
+/** Target gap as a fraction of card width (keeps gaps ~1/4 of old leftover gaps). */
+export const TARGET_GAP_RATIO = 0.08
+export const MIN_GAP_RATIO = 0.06
+export const MAX_GAP_RATIO = 0.1
 export const MIN_COLUMN_GAP = 4
 
 export const BOARD_PAD_X = 12
@@ -23,7 +27,7 @@ export const BOARD_PAD_Y = 8
 /** Gap between the tableau and the right (or bottom) rail. */
 export const RAIL_GAP = 12
 export const MIN_RAIL_WIDTH = 56
-export const MAX_RAIL_WIDTH = 104
+export const MAX_RAIL_WIDTH = 140
 
 /** Foundation/stock cards are indicators — slightly smaller than play cards. */
 export const RAIL_CARD_SCALE = 0.82

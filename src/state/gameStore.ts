@@ -21,6 +21,7 @@ import type {
   Move,
 } from '@/engine/types'
 import { DEFAULT_GAME_SETTINGS } from '@/engine/types'
+import { rankedHints } from '@/solver/search'
 import { useSettingsStore } from './settingsStore'
 import { useUiStore } from './uiStore'
 
@@ -43,6 +44,10 @@ function withScore(handle: GameHandle, undoCount: number): GameHandle {
     ...handle,
     state: { ...handle.state, score },
   }
+}
+
+function clearHints(): void {
+  useUiStore.getState().stopHintPlayback()
 }
 
 export interface GameStoreState {
@@ -75,7 +80,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     const seed = opts.seed ?? randomSeed()
     const handle = createGame(seed, difficulty, settingsFromStore())
     useUiStore.getState().clearSelection()
-    useUiStore.getState().setHintMove(null)
+    clearHints()
     set({
       handle: withScore(handle, 0),
       undoCount: 0,
@@ -88,7 +93,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     const next = engineAttempt(handle, move)
     if (next === handle) return false
     useUiStore.getState().clearSelection()
-    useUiStore.getState().setHintMove(null)
+    clearHints()
     set({ handle: withScore(next, get().undoCount) })
     if (gameWon(next)) {
       useUiStore.getState().openPanelById('win')
@@ -114,7 +119,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     if (next === handle) return
     const nextUndo = undoCount + 1
     useUiStore.getState().clearSelection()
-    useUiStore.getState().setHintMove(null)
+    clearHints()
     set({ handle: withScore(next, nextUndo), undoCount: nextUndo })
   },
 
@@ -123,7 +128,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     const next = engineRedo(handle)
     if (next === handle) return
     useUiStore.getState().clearSelection()
-    useUiStore.getState().setHintMove(null)
+    clearHints()
     set({ handle: withScore(next, undoCount) })
   },
 
@@ -131,7 +136,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     const { handle } = get()
     const next = engineRestart(handle)
     useUiStore.getState().clearSelection()
-    useUiStore.getState().setHintMove(null)
+    clearHints()
     set({
       handle: withScore({ ...next, settings: settingsFromStore() }, 0),
       undoCount: 0,
@@ -140,11 +145,17 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   },
 
   requestHint: () => {
+    const ui = useUiStore.getState()
+    if (ui.hintPlaying) {
+      ui.stopHintPlayback()
+      return null
+    }
     const { handle } = get()
-    const moves = hintableMoves(handle.state, handle.settings)
-    const move = moves.find((m) => m.kind === 'moveRun') ?? moves[0] ?? null
-    useUiStore.getState().setHintMove(move)
-    return move
+    const legal = hintableMoves(handle.state, handle.settings)
+    const ranked = rankedHints(handle.state, Math.max(1, legal.length), handle.settings)
+    const moves = ranked.map((r) => r.move)
+    ui.startHintPlayback(moves)
+    return moves[0] ?? null
   },
 
   canUndo: () => get().handle.moveLog.length > 0,

@@ -1,0 +1,45 @@
+.hint-ghost-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5500;
+}
+
+.card--ghost {
+  filter: drop-shadow(0 0 12px var(--neon-glow));
+  cursor: default;
+}
+
+.card--ghost .card-inner {
+  border-color: color-mix(in srgb, var(--neon) 55%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--neon) 35%, transparent);
+}
+
+.hint-ghost-deal-label {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  font-size: clamp(0.75rem, calc(var(--card-w, 72px) * 0.14), 1rem);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--neon);
+  background: color-mix(in srgb, var(--panel) 80%, transparent);
+  border: 1px solid color-mix(in srgb, var(--neon) 45%, transparent);
+  box-shadow: 0 0 18px var(--neon-glow);
+  animation: hint-deal-pulse 0.9s ease-in-out;
+}
+
+@keyframes hint-deal-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}

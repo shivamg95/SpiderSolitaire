@@ -67,25 +67,25 @@
   align-items: center;
   line-height: 1;
   font-weight: 700;
-  font-size: clamp(0.65rem, 2.2vw, 0.95rem);
+  font-size: clamp(0.85rem, calc(var(--card-w, 72px) * 0.26), 2rem);
   font-variant-numeric: tabular-nums;
 }
 
 .card-index--tl {
-  top: 4%;
-  left: 6%;
+  top: 3%;
+  left: 5%;
 }
 
 .card-index--br {
-  right: 6%;
-  bottom: 4%;
+  right: 5%;
+  bottom: 3%;
   transform: rotate(180deg);
 }
 
 .card-suit-sm {
-  width: 0.85em;
-  height: 0.85em;
-  margin-top: 1px;
+  width: 0.95em;
+  height: 0.95em;
+  margin-top: 2px;
 }
 
 .card-suit-lg {

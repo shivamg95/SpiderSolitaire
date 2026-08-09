@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createGame } from '@/engine/game'
 import type { Card, GameState } from '@/engine/types'
 import { computeLayout, computeBoardMetrics } from './computeLayout'
-import { COLUMN_COUNT, RAIL_CARD_SCALE } from './constants'
+import { COLUMN_COUNT, MAX_GAP_RATIO, MIN_GAP_RATIO, RAIL_CARD_SCALE } from './constants'
 
 function makeTallColumn(count: number): Card[] {
   return Array.from({ length: count }, (_, i) => ({
@@ -29,6 +29,14 @@ describe('computeBoardMetrics', () => {
     const metrics = computeBoardMetrics({ width: 400, height: 800 })
     expect(metrics.layoutMode).toBe('bottom')
     expect(metrics.railY).toBeGreaterThan(metrics.columnsY)
+  })
+
+  it('grows cards on wide screens and keeps gaps proportional to card width', () => {
+    const metrics = computeBoardMetrics({ width: 1920, height: 1080 })
+    expect(metrics.cardWidth).toBeGreaterThan(96)
+    const ratio = metrics.columnGap / metrics.cardWidth
+    expect(ratio).toBeGreaterThanOrEqual(MIN_GAP_RATIO - 0.02)
+    expect(ratio).toBeLessThanOrEqual(MAX_GAP_RATIO + 0.02)
   })
 })
 
@@ -105,7 +113,6 @@ describe('computeLayout', () => {
     const shortBottom = shortLayout.get(short[0]!.id)!
     const shortSpan = shortTop.y - shortBottom.y
 
-    // Per-card spacing should be larger when fewer cards (less compact).
     const tallStep = tallSpan / (tall.length - 1)
     const shortStep = shortSpan / (short.length - 1)
     expect(shortStep).toBeGreaterThan(tallStep)

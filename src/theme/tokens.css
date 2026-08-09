@@ -85,3 +85,79 @@
   --card-back-1: #2a2a34;
   --felt-gradient: radial-gradient(1000px 700px at 50% 0%, #2a2a34 0%, var(--felt-0) 62%);
 }
+
+/* —— Light appearance (shared base, then per-palette tweaks) —— */
+
+:root[data-appearance='light'] {
+  color-scheme: light;
+  --felt-0: #e8eef8;
+  --felt-1: #d5e0f0;
+  --felt-2: #c2d0e6;
+  --text: #101826;
+  --muted: #5a6b86;
+  --glass: color-mix(in srgb, #ffffff 62%, transparent);
+  --panel: color-mix(in srgb, #f4f7fc 88%, transparent);
+  --glass-border: color-mix(in srgb, var(--neon) 32%, #8a9bb8 20%);
+  --card-face: #ffffff;
+  --card-face-ink: #101826;
+  --card-back-0: #3a4a6a;
+  --card-back-1: #5a6e94;
+  --shadow-card: 0 8px 22px rgba(16, 24, 40, 0.18);
+  --shadow-lift: 0 14px 32px rgba(16, 24, 40, 0.28);
+  --felt-gradient: radial-gradient(
+    1200px 800px at 18% 0%,
+    var(--felt-2) 0%,
+    var(--felt-0) 58%
+  );
+}
+
+:root[data-appearance='light'][data-theme='midnight'] {
+  --neon: #0a9ea8;
+  --neon-2: #d4185a;
+  --neon-glow: color-mix(in srgb, var(--neon) 28%, transparent);
+  --felt-0: #e6eef8;
+  --felt-1: #d0dced;
+  --felt-2: #b8c8e0;
+}
+
+:root[data-appearance='light'][data-theme='aurora'] {
+  --neon: #1a9a6e;
+  --neon-2: #5a4fd4;
+  --neon-glow: color-mix(in srgb, var(--neon) 26%, transparent);
+  --felt-0: #e6f4f0;
+  --felt-1: #d0e8e2;
+  --felt-2: #b5d8d0;
+  --text: #0d1c1a;
+  --muted: #4a6e66;
+  --card-face: #f7fffc;
+  --card-back-0: #2a4a48;
+  --card-back-1: #3e6864;
+}
+
+:root[data-appearance='light'][data-theme='ember'] {
+  --neon: #c87820;
+  --neon-2: #d43828;
+  --neon-glow: color-mix(in srgb, var(--neon) 26%, transparent);
+  --felt-0: #f6ebe4;
+  --felt-1: #ecd8cc;
+  --felt-2: #e0c4b4;
+  --text: #1a100c;
+  --muted: #7a5a4a;
+  --card-face: #fffaf6;
+  --card-back-0: #5a3028;
+  --card-back-1: #7a4840;
+}
+
+:root[data-appearance='light'][data-theme='mono'] {
+  --neon: #3a3a48;
+  --neon-2: #6a7080;
+  --neon-glow: color-mix(in srgb, var(--neon) 18%, transparent);
+  --felt-0: #f0f0f4;
+  --felt-1: #e2e2e8;
+  --felt-2: #d0d0d8;
+  --text: #121216;
+  --muted: #5a5a68;
+  --card-face: #ffffff;
+  --card-back-0: #3a3a44;
+  --card-back-1: #555564;
+}

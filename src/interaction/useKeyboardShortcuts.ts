@@ -20,6 +20,7 @@ export function useKeyboardShortcuts(): void {
       if (e.key === 'Escape') {
         useUiStore.getState().closePanel()
         useUiStore.getState().clearSelection()
+        useUiStore.getState().stopHintPlayback()
         return
       }
 

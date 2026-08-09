@@ -3,6 +3,7 @@ import clsx from 'clsx'
 import type { Card as CardModel, ColumnIndex } from '@/engine/types'
 import { useMotionPreset } from '@/animation/useMotionPreset'
 import { CardLayer } from '@/components/cards/CardLayer'
+import { HintGhostLayer } from '@/components/cards/HintGhostLayer'
 import { ColumnDropZones } from '@/components/board/ColumnDropZones'
 import type { ColumnDropZonesHandle } from '@/components/board/ColumnDropZones'
 import { SideRail } from '@/components/chrome/SideRail'
@@ -47,6 +48,9 @@ export function Board() {
   const setSelectedRun = useUiStore((s) => s.setSelectedRun)
   const clearSelection = useUiStore((s) => s.clearSelection)
   const hintMove = useUiStore((s) => s.hintMove)
+  const hintIndex = useUiStore((s) => s.hintIndex)
+  const hintPlaying = useUiStore((s) => s.hintPlaying)
+  const advanceHint = useUiStore((s) => s.advanceHint)
   const openPanel = useUiStore((s) => s.openPanel)
   const reducedMotion = useSettingsStore((s) => s.reducedMotion)
   const panelOpen = openPanel !== null
@@ -79,6 +83,8 @@ export function Board() {
     metrics.layoutMode === 'rail'
       ? metrics.boardHeight - metrics.columnsY
       : Math.max(0, metrics.railY - metrics.columnsY)
+
+  const availableColumnHeight = Math.max(metrics.cardHeight, tableauHeight - metrics.padY)
 
   const { onPointerDown } = usePointerDrag({
     getColumnRects: () => dropZonesRef.current?.getRects() ?? [],
@@ -157,15 +163,6 @@ export function Board() {
     [handle.state.columns, movableLength, onPointerDown, panelOpen],
   )
 
-  const hintCardIds = useMemo(() => {
-    const ids = new Set<string>()
-    if (hintMove?.kind !== 'moveRun') return ids
-    const col = handle.state.columns[hintMove.from]
-    if (!col) return ids
-    for (const c of col.slice(col.length - hintMove.count)) ids.add(c.id)
-    return ids
-  }, [hintMove, handle.state.columns])
-
   const selectedCardIds = useMemo(() => {
     const ids = new Set<string>()
     if (!selectedRun) return ids
@@ -174,6 +171,7 @@ export function Board() {
   }, [selectedRun])
 
   const foundationsFilled = handle.state.foundations.length
+  const pulseDeal = hintPlaying && hintMove?.kind === 'dealStock'
 
   return (
     <div
@@ -212,16 +210,28 @@ export function Board() {
           cardWidth={metrics.cardWidth}
           cardHeight={metrics.cardHeight}
           transition={preset.snap}
-          hintCardIds={hintCardIds}
           selectedCardIds={selectedCardIds}
           draggingIds={draggingIds}
           dragOffset={dragOffset}
           onCardPointerDown={onCardPointerDown}
         />
+        <HintGhostLayer
+          state={handle.state}
+          move={hintMove}
+          hintIndex={hintIndex}
+          playing={hintPlaying}
+          placements={placements}
+          metrics={metrics}
+          availableColumnHeight={availableColumnHeight}
+          transition={preset.deal}
+          reducedMotion={reducedMotion || preset.reduced}
+          onCycleComplete={advanceHint}
+        />
         <SideRail
           metrics={metrics}
           foundationsFilled={foundationsFilled}
           panelOpen={panelOpen}
+          pulseDeal={pulseDeal}
         />
       </div>
     </div>

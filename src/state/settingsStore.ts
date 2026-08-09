@@ -1,16 +1,28 @@
 import { create } from 'zustand'
 import type { Difficulty, GameSettings } from '@/engine/types'
-import { DEFAULT_THEME, applyTheme, isThemeId, type ThemeId } from '@/theme/themes'
+import {
+  DEFAULT_APPEARANCE,
+  DEFAULT_THEME,
+  applyAppearance,
+  applyTheme,
+  isAppearanceId,
+  isThemeId,
+  watchSystemAppearance,
+  type AppearanceId,
+  type ThemeId,
+} from '@/theme/themes'
 
 export interface SettingsState {
   readonly difficulty: Difficulty
   readonly theme: ThemeId
+  readonly appearance: AppearanceId
   readonly allowDealWithEmptyColumn: boolean
   readonly undoPenalty: boolean
   readonly reducedMotion: boolean
   readonly soundMuted: boolean
   setDifficulty: (d: Difficulty) => void
   setTheme: (t: ThemeId) => void
+  setAppearance: (a: AppearanceId) => void
   setAllowDealWithEmptyColumn: (v: boolean) => void
   setUndoPenalty: (v: boolean) => void
   setReducedMotion: (v: boolean) => void
@@ -19,9 +31,23 @@ export interface SettingsState {
   toGameSettings: () => GameSettings
 }
 
+let stopSystemWatch: (() => void) | null = null
+
+function syncAppearanceWatch(appearance: AppearanceId): void {
+  stopSystemWatch?.()
+  stopSystemWatch = null
+  applyAppearance(appearance)
+  if (appearance === 'system') {
+    stopSystemWatch = watchSystemAppearance(() => {
+      applyAppearance('system')
+    })
+  }
+}
+
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   difficulty: 1,
   theme: DEFAULT_THEME,
+  appearance: DEFAULT_APPEARANCE,
   allowDealWithEmptyColumn: false,
   undoPenalty: true,
   reducedMotion: false,
@@ -32,6 +58,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setTheme: (theme) => {
     applyTheme(theme)
     set({ theme })
+  },
+  setAppearance: (appearance) => {
+    syncAppearanceWatch(appearance)
+    set({ appearance })
   },
   setAllowDealWithEmptyColumn: (allowDealWithEmptyColumn) => {
     set({ allowDealWithEmptyColumn })
@@ -55,6 +85,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 }))
 
 export function hydrateThemeFromSettings(): void {
-  const theme = useSettingsStore.getState().theme
+  const { theme, appearance } = useSettingsStore.getState()
   if (isThemeId(theme)) applyTheme(theme)
+  if (isAppearanceId(appearance)) syncAppearanceWatch(appearance)
 }

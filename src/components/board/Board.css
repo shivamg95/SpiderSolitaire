@@ -108,13 +108,13 @@
 }
 
 .stock-count {
-  font-size: 1.4rem;
+  font-size: clamp(1.1rem, calc(var(--card-w, 72px) * 0.28), 1.75rem);
   font-weight: 700;
   color: var(--neon);
 }
 
 .stock-label {
-  font-size: 0.75rem;
+  font-size: clamp(0.65rem, calc(var(--card-w, 72px) * 0.12), 0.9rem);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
