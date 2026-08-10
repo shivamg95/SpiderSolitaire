@@ -7,6 +7,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 const rootDir = path.dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
+  base: '/SpiderSolitaire/',
   plugins: [
     react(),
     VitePWA({
@@ -20,22 +21,23 @@ export default defineConfig({
         background_color: '#0a0e17',
         display: 'standalone',
         orientation: 'any',
-        start_url: '/',
+        start_url: '/SpiderSolitaire/',
+        scope: '/SpiderSolitaire/',
         icons: [
           {
-            src: '/icons/icon-192.png',
+            src: 'icons/icon-192.png',
             sizes: '192x192',
             type: 'image/png',
             purpose: 'any',
           },
           {
-            src: '/icons/icon-512.png',
+            src: 'icons/icon-512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any',
           },
           {
-            src: '/icons/icon-maskable-512.png',
+            src: 'icons/icon-maskable-512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable',
@@ -44,7 +46,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-        navigateFallback: '/index.html',
+        navigateFallback: '/SpiderSolitaire/index.html',
       },
     }),
   ],
