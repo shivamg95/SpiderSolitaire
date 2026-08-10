@@ -1,0 +1,424 @@
+/* —— Settings layout —— */
+
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.95rem 1rem;
+  border-radius: 16px;
+  border: 1px solid var(--hairline);
+  background: var(--surface-2);
+}
+
+.settings-group__title {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.settings-field__label {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.settings-field__caption {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+/* —— Segmented control —— */
+
+.segmented {
+  position: relative;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 0;
+  padding: 3px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-1) 70%, transparent);
+  border: 1px solid var(--hairline);
+}
+
+.segmented__thumb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  border-radius: 9px;
+  background: var(--surface-3);
+  border: 1px solid var(--hairline-strong);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 12%),
+    0 0 0 1px color-mix(in srgb, var(--neon) 8%, transparent);
+  transition:
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.segmented__option {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  min-height: 2.1rem;
+  padding: 0.35rem 0.45rem;
+  cursor: pointer;
+  border-radius: 9px;
+  user-select: none;
+}
+
+.segmented__input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.segmented__label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--muted);
+  transition: color 0.15s ease;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.segmented__option--active .segmented__label {
+  color: var(--text);
+}
+
+.segmented__option:has(.segmented__input:focus-visible) {
+  outline: 2px solid var(--neon);
+  outline-offset: 1px;
+}
+
+/* —— Theme swatches —— */
+
+.theme-swatches {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.55rem;
+}
+
+.theme-swatch {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  color: var(--text);
+  text-align: left;
+}
+
+.theme-swatch__preview {
+  position: relative;
+  height: 52px;
+  border-radius: 12px;
+  border: 2px solid var(--hairline-strong);
+  overflow: hidden;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 12%);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.12s ease;
+}
+
+.theme-swatch__accent {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 2px solid rgb(255 255 255 / 55%);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 25%);
+}
+
+.theme-swatch__check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: grid;
+  place-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--on-accent);
+  background: var(--neon);
+  opacity: 0;
+  transform: scale(0.8);
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+}
+
+.theme-swatch__name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: center;
+  transition: color 0.15s ease;
+}
+
+.theme-swatch--active .theme-swatch__preview {
+  border-color: var(--neon);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--neon) 35%, transparent),
+    0 0 16px color-mix(in srgb, var(--neon) 22%, transparent);
+}
+
+.theme-swatch--active .theme-swatch__check {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.theme-swatch--active .theme-swatch__name {
+  color: var(--text);
+}
+
+.theme-swatch:hover .theme-swatch__preview {
+  transform: translateY(-1px);
+}
+
+.theme-swatch:focus-visible .theme-swatch__preview {
+  outline: 2px solid var(--neon);
+  outline-offset: 2px;
+}
+
+.theme-swatch[data-theme-preview='midnight'] .theme-swatch__preview {
+  background: linear-gradient(145deg, #13203a 0%, #070b14 70%);
+}
+
+.theme-swatch[data-theme-preview='midnight'] .theme-swatch__accent {
+  background: #2de2e6;
+}
+
+.theme-swatch[data-theme-preview='aurora'] .theme-swatch__preview {
+  background: linear-gradient(145deg, #12363a 0%, #071018 70%);
+}
+
+.theme-swatch[data-theme-preview='aurora'] .theme-swatch__accent {
+  background: #7ef9c5;
+}
+
+.theme-swatch[data-theme-preview='ember'] .theme-swatch__preview {
+  background: linear-gradient(145deg, #3a1810 0%, #120808 70%);
+}
+
+.theme-swatch[data-theme-preview='ember'] .theme-swatch__accent {
+  background: #ffb347;
+}
+
+.theme-swatch[data-theme-preview='mono'] .theme-swatch__preview {
+  background: linear-gradient(145deg, #22222a 0%, #0a0a0c 70%);
+}
+
+.theme-swatch[data-theme-preview='mono'] .theme-swatch__accent {
+  background: #e8e8f0;
+}
+
+/* —— Switch rows —— */
+
+.switch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.switch-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.switch-row:first-child {
+  padding-top: 0;
+}
+
+.switch-row__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.switch-row__label {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.switch-row__hint {
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.switch {
+  appearance: none;
+  position: relative;
+  flex: 0 0 auto;
+  width: 46px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 35%, var(--surface-1));
+  cursor: pointer;
+  transition: background 0.18s ease;
+}
+
+.switch--on {
+  background: var(--neon);
+}
+
+.switch__thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 28%);
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.switch--on .switch__thumb {
+  transform: translateX(18px);
+}
+
+.switch--static,
+.switch--static .switch__thumb {
+  transition: none;
+}
+
+.switch:focus-visible {
+  outline: 2px solid var(--neon);
+  outline-offset: 2px;
+}
+
+.switch:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* —— Buttons —— */
+
+.btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 2.45rem;
+  padding: 0.5rem 0.95rem;
+  border-radius: 12px;
+  border: 1px solid var(--hairline-strong);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease,
+    transform 0.1s ease;
+}
+
+.btn:hover {
+  border-color: color-mix(in srgb, var(--neon) 45%, var(--hairline-strong));
+  box-shadow: 0 0 14px color-mix(in srgb, var(--neon) 18%, transparent);
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--neon);
+  outline-offset: 2px;
+}
+
+.btn--primary {
+  flex: 1 1 auto;
+  border-color: transparent;
+  color: var(--on-accent);
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--neon) 88%, #fff 12%),
+    var(--neon)
+  );
+  box-shadow:
+    0 0 18px color-mix(in srgb, var(--neon) 28%, transparent),
+    inset 0 1px 0 rgb(255 255 255 / 28%);
+}
+
+.btn--primary:hover {
+  border-color: transparent;
+  box-shadow:
+    0 0 24px color-mix(in srgb, var(--neon) 40%, transparent),
+    inset 0 1px 0 rgb(255 255 255 / 32%);
+}
+
+.btn--ghost {
+  flex: 0 1 auto;
+  background: transparent;
+  border-color: var(--hairline-strong);
+  color: var(--text);
+}
+
+.btn--ghost:hover {
+  background: var(--surface-2);
+}
+
+@media (max-width: 420px) {
+  .theme-swatches {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .panel-footer {
+    flex-direction: column;
+  }
+
+  .btn--ghost {
+    width: 100%;
+  }
+}

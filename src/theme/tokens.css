@@ -35,6 +35,19 @@
     var(--felt-2) 0%,
     var(--felt-0) 58%
   );
+
+  /* Chrome / panel surfaces (appearance-aware) */
+  --scrim: rgb(2 6 15 / 76%);
+  --surface-1: #0c1425;
+  --surface-2: #141e33;
+  --surface-3: #1e2b45;
+  --hairline: rgb(255 255 255 / 9%);
+  --hairline-strong: rgb(255 255 255 / 16%);
+  --on-accent: var(--felt-0);
+  --shadow-panel:
+    0 0 0 1px color-mix(in srgb, var(--neon) 10%, transparent),
+    0 24px 64px rgb(0 0 0 / 55%),
+    0 0 48px color-mix(in srgb, var(--neon) 14%, transparent);
 }
 
 :root[data-theme='aurora'] {
@@ -114,6 +127,19 @@
     var(--felt-2) 0%,
     var(--felt-0) 58%
   );
+
+  /* Chrome / panel surfaces */
+  --scrim: rgb(18 28 48 / 34%);
+  --surface-1: #ffffff;
+  --surface-2: #f1f4fa;
+  --surface-3: #ffffff;
+  --hairline: rgb(16 24 40 / 9%);
+  --hairline-strong: rgb(16 24 40 / 16%);
+  --on-accent: #ffffff;
+  --shadow-panel:
+    0 0 0 1px color-mix(in srgb, var(--neon) 12%, transparent),
+    0 20px 48px rgb(16 24 40 / 18%),
+    0 0 32px color-mix(in srgb, var(--neon) 10%, transparent);
 }
 
 :root[data-appearance='light'][data-theme='midnight'] {

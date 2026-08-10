@@ -6,6 +6,13 @@ export type ResolvedAppearance = 'light' | 'dark'
 
 export const THEMES: readonly ThemeId[] = ['midnight', 'aurora', 'ember', 'mono']
 
+export const THEME_LABELS: Record<ThemeId, string> = {
+  midnight: 'Midnight',
+  aurora: 'Aurora',
+  ember: 'Ember',
+  mono: 'Mono',
+}
+
 export const APPEARANCES: readonly AppearanceId[] = ['system', 'light', 'dark']
 
 export const DEFAULT_THEME: ThemeId = 'midnight'

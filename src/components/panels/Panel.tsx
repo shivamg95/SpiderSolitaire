@@ -11,10 +11,11 @@ export interface PanelProps {
   readonly open: boolean
   readonly onClose: () => void
   readonly children: ReactNode
+  readonly footer?: ReactNode
   readonly className?: string
 }
 
-export function Panel({ title, open, onClose, children, className }: PanelProps) {
+export function Panel({ title, open, onClose, children, footer, className }: PanelProps) {
   const reducedMotion = useSettingsStore((s) => s.reducedMotion)
   const preset = useMotionPreset(reducedMotion)
 
@@ -79,6 +80,7 @@ export function Panel({ title, open, onClose, children, className }: PanelProps)
           </button>
         </header>
         <div className="panel-body">{children}</div>
+        {footer ? <div className="panel-footer">{footer}</div> : null}
       </motion.div>
     </div>,
     document.body,
