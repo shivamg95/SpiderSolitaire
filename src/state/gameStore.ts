@@ -27,7 +27,7 @@ import type {
 } from '@/engine/types'
 import { DEFAULT_GAME_SETTINGS } from '@/engine/types'
 import { SolverClient, type RankedHint } from '@/solver/client'
-import { rankedHints } from '@/solver/search'
+import { rankedHints, SYNC_HINT_BUDGET } from '@/solver/search'
 import { useSettingsStore } from './settingsStore'
 import { useUiStore } from './uiStore'
 
@@ -48,12 +48,7 @@ function invalidatePendingHints(): void {
 
 function syncRankedHints(handle: GameHandle): RankedHint[] {
   const candidates = hintableMoves(handle.state, handle.settings)
-  return rankedHints(
-    handle.state,
-    Math.max(1, candidates.length),
-    handle.settings,
-    candidates,
-  )
+  return rankedHints(handle.state, 3, handle.settings, candidates, SYNC_HINT_BUDGET)
 }
 
 function randomSeed(): number {
@@ -97,6 +92,8 @@ export interface GameStoreState {
   readonly handle: GameHandle
   readonly undoCount: number
   readonly startedAt: number
+  /** Hints requested this deal (for stats / clean-hints achievement). */
+  readonly hintsUsed: number
   /** Cards whose board position changed in the most recent transition. */
   readonly movingIds: readonly CardId[]
   /** Bumped on every transition so the view can restart flight effects. */
@@ -181,6 +178,7 @@ export const useGameStore = create<GameStoreState>((set, get) => {
   return {
     handle: createGame(1, 1, DEFAULT_GAME_SETTINGS),
     undoCount: 0,
+    hintsUsed: 0,
     startedAt: Date.now(),
     movingIds: [],
     moveSeq: 0,
@@ -196,6 +194,7 @@ export const useGameStore = create<GameStoreState>((set, get) => {
       set({
         handle: withScore(handle, 0),
         undoCount: 0,
+        hintsUsed: 0,
         startedAt: Date.now(),
         movingIds: [],
         moveSeq: get().moveSeq + 1,
@@ -250,6 +249,7 @@ export const useGameStore = create<GameStoreState>((set, get) => {
       set({
         handle: withScore({ ...next, settings: settingsFromStore() }, 0),
         undoCount: 0,
+        hintsUsed: 0,
         startedAt: Date.now(),
         movingIds: [],
         moveSeq: get().moveSeq + 1,
@@ -268,16 +268,15 @@ export const useGameStore = create<GameStoreState>((set, get) => {
       const gen = ++hintGeneration
       const applyHints = (ranked: RankedHint[]) => {
         if (gen !== hintGeneration) return
-        ui.startHintPlayback(ranked.map((r) => r.move))
+        if (ranked.length > 0) {
+          set({ hintsUsed: get().hintsUsed + 1 })
+        }
+        ui.startHintPlayback(ranked)
       }
 
       void (async () => {
         try {
-          const ranked = await getSolverClient().hint(
-            handle.state,
-            undefined,
-            handle.settings,
-          )
+          const ranked = await getSolverClient().hint(handle.state, 3, handle.settings)
           applyHints(ranked)
         } catch {
           if (gen !== hintGeneration) return

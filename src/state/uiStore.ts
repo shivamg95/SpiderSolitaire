@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { CardId, ColumnIndex, Move } from '@/engine/types'
+import type { RankedHint } from '@/solver/client'
 
 export type PanelId = 'menu' | 'settings' | 'win' | 'share' | null
 
@@ -11,27 +12,49 @@ export interface SelectedRun {
 
 export interface UiState {
   readonly openPanel: PanelId
-  readonly hintMove: Move | null
-  readonly hintQueue: readonly Move[]
+  readonly hintQueue: readonly RankedHint[]
   readonly hintIndex: number
   readonly hintPlaying: boolean
   readonly selectedRun: SelectedRun | null
+  /** Derived from hintQueue[hintIndex]; null when not playing. */
+  readonly hintMove: Move | null
+  /** Explanation for the current hint, if any. */
+  readonly hintExplanation: string | null
+  readonly hintConfidence: RankedHint['confidence'] | null
   openPanelById: (panel: PanelId) => void
   closePanel: () => void
   setHintMove: (move: Move | null) => void
-  startHintPlayback: (moves: readonly Move[]) => void
+  startHintPlayback: (hints: readonly RankedHint[]) => void
   advanceHint: () => void
   stopHintPlayback: () => void
   setSelectedRun: (run: SelectedRun | null) => void
   clearSelection: () => void
 }
 
+function hintFields(queue: readonly RankedHint[], index: number, playing: boolean) {
+  if (!playing || queue.length === 0) {
+    return {
+      hintMove: null as Move | null,
+      hintExplanation: null as string | null,
+      hintConfidence: null as RankedHint['confidence'] | null,
+    }
+  }
+  const entry = queue[index] ?? queue[0]
+  return {
+    hintMove: entry?.move ?? null,
+    hintExplanation: entry?.explanation ?? null,
+    hintConfidence: entry?.confidence ?? null,
+  }
+}
+
 export const useUiStore = create<UiState>((set, get) => ({
   openPanel: null,
-  hintMove: null,
   hintQueue: [],
   hintIndex: 0,
   hintPlaying: false,
+  hintMove: null,
+  hintExplanation: null,
+  hintConfidence: null,
   selectedRun: null,
   openPanelById: (openPanel) => {
     set({ openPanel })
@@ -42,21 +65,21 @@ export const useUiStore = create<UiState>((set, get) => ({
   setHintMove: (hintMove) => {
     set({ hintMove })
   },
-  startHintPlayback: (moves) => {
-    if (moves.length === 0) {
+  startHintPlayback: (hints) => {
+    if (hints.length === 0) {
       set({
         hintQueue: [],
         hintIndex: 0,
         hintPlaying: false,
-        hintMove: null,
+        ...hintFields([], 0, false),
       })
       return
     }
     set({
-      hintQueue: [...moves],
+      hintQueue: [...hints],
       hintIndex: 0,
       hintPlaying: true,
-      hintMove: moves[0] ?? null,
+      ...hintFields(hints, 0, true),
     })
   },
   advanceHint: () => {
@@ -65,7 +88,7 @@ export const useUiStore = create<UiState>((set, get) => ({
     const next = (hintIndex + 1) % hintQueue.length
     set({
       hintIndex: next,
-      hintMove: hintQueue[next] ?? null,
+      ...hintFields(hintQueue, next, true),
     })
   },
   stopHintPlayback: () => {
@@ -73,7 +96,7 @@ export const useUiStore = create<UiState>((set, get) => ({
       hintQueue: [],
       hintIndex: 0,
       hintPlaying: false,
-      hintMove: null,
+      ...hintFields([], 0, false),
     })
   },
   setSelectedRun: (selectedRun) => {

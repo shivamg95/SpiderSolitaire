@@ -32,6 +32,41 @@
   animation: hint-deal-pulse 0.9s ease-in-out;
 }
 
+.hint-ghost-caption {
+  position: absolute;
+  left: 50%;
+  bottom: 0.75rem;
+  transform: translateX(-50%);
+  max-width: min(92%, 28rem);
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  font-size: clamp(0.7rem, calc(var(--card-w, 72px) * 0.13), 0.95rem);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-align: center;
+  color: var(--text);
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--neon) 35%, transparent);
+  box-shadow: 0 0 16px var(--neon-glow);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hint-ghost-caption--high {
+  border-color: color-mix(in srgb, var(--neon) 70%, transparent);
+}
+
+.hint-ghost-caption--medium {
+  border-color: color-mix(in srgb, var(--neon) 40%, transparent);
+  opacity: 0.95;
+}
+
+.hint-ghost-caption--low {
+  border-color: color-mix(in srgb, var(--muted, #888) 45%, transparent);
+  opacity: 0.9;
+}
+
 @keyframes hint-deal-pulse {
   0%,
   100% {

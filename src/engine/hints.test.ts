@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   breaksExistingBuild,
+  classifyMove,
   createGame,
   hintableMoves,
   isProductiveMove,
@@ -41,14 +42,14 @@ describe('hint filtering', () => {
     expect(breaksExistingBuild(board, { kind: 'dealStock' })).toBe(false)
   })
 
-  it('keeps build-breaking moves out of the hint queue', () => {
+  it('keeps build-breaking moves out of the hint queue when alternatives exist', () => {
     const hints = hintableMoves(board)
     expect(hints).not.toContainEqual({ kind: 'moveRun', from: 0, to: 1, count: 1 })
     expect(hints).toContainEqual({ kind: 'moveRun', from: 0, to: 2, count: 2 })
     expect(hints).toContainEqual({ kind: 'moveRun', from: 1, to: 2, count: 1 })
   })
 
-  it('drops shuffles that achieve nothing but keeps same-suit joins', () => {
+  it('keeps same-suit joins and still admits cross-suit unloads as lower-tier options', () => {
     const shuffleBoard = parseBoard(`
       difficulty: 4
       c0: [0] S10 H5
@@ -61,12 +62,25 @@ describe('hint filtering', () => {
     const ontoOffSuit = { kind: 'moveRun', from: 0, to: 1, count: 1 } as const
     const ontoSameSuit = { kind: 'moveRun', from: 0, to: 2, count: 1 } as const
 
-    expect(isProductiveMove(shuffleBoard, ontoOffSuit)).toBe(false)
+    expect(classifyMove(shuffleBoard, ontoOffSuit)).toBe('crossSuitUnload')
+    expect(classifyMove(shuffleBoard, ontoSameSuit)).toBe('suitMerge')
     expect(isProductiveMove(shuffleBoard, ontoSameSuit)).toBe(true)
-    expect(hintableMoves(shuffleBoard)).toEqual([ontoSameSuit])
+    const hints = hintableMoves(shuffleBoard)
+    expect(hints).toContainEqual(ontoSameSuit)
+    expect(hints).toContainEqual(ontoOffSuit)
+    // Same-suit ranks ahead of cross-suit in the ordered candidate list.
+    const sameIdx = hints.findIndex(
+      (m) => m.kind === 'moveRun' && m.from === 0 && m.to === 2 && m.count === 1,
+    )
+    const crossIdx = hints.findIndex(
+      (m) => m.kind === 'moveRun' && m.from === 0 && m.to === 1 && m.count === 1,
+    )
+    expect(sameIdx).toBeGreaterThanOrEqual(0)
+    expect(crossIdx).toBeGreaterThanOrEqual(0)
+    expect(sameIdx).toBeLessThan(crossIdx)
   })
 
-  it('falls back rather than leaving the player without a hint', () => {
+  it('falls back to cross-suit unloads rather than leaving the player without a hint', () => {
     const deadishBoard = parseBoard(`
       difficulty: 4
       c0: [0] S10 H5
@@ -76,8 +90,10 @@ describe('hint filtering', () => {
       stock: 0
       found: 0
     `)
-    // Both moves are unproductive, so the unfiltered tier is offered instead.
     expect(hintableMoves(deadishBoard)).toHaveLength(2)
+    expect(
+      classifyMove(deadishBoard, { kind: 'moveRun', from: 0, to: 1, count: 1 }),
+    ).toBe('crossSuitUnload')
   })
 
   it('treats relocating a whole column into an empty one as pointless', () => {
@@ -92,6 +108,69 @@ describe('hint filtering', () => {
     expect(
       isProductiveMove(parkBoard, { kind: 'moveRun', from: 0, to: 1, count: 1 }),
     ).toBe(false)
+  })
+
+  it('classifies same-suit joins and rejects dumping a partial run into empty', () => {
+    const board4 = parseBoard(`
+      difficulty: 4
+      c0: [0] H2 S10 S9 S8
+      c1: [0] H3 S7
+      c2: -
+      c3: [0] HK
+      c4: [0] HK
+      c5: [0] DK
+      c6: [0] DK
+      c7: [0] CK
+      c8: [0] CK
+      c9: [0] SK
+      stock: 0
+      found: 0
+    `)
+    expect(classifyMove(board4, { kind: 'moveRun', from: 1, to: 0, count: 1 })).toBe(
+      'suitMerge',
+    )
+    // Peeling one card off a same-suit build into empty dismantles the build.
+    expect(classifyMove(board4, { kind: 'moveRun', from: 0, to: 2, count: 1 })).toBe(
+      'breakBuild',
+    )
+    // Full movable run into empty is spendEmpty.
+    expect(classifyMove(board4, { kind: 'moveRun', from: 0, to: 2, count: 3 })).toBe(
+      'spendEmpty',
+    )
+    // Whole-column relocate into empty is shuffle.
+    const lone = parseBoard(`
+      difficulty: 4
+      c0: [0] S6
+      c1: -
+      c9: [0] CK
+      stock: 0
+      found: 0
+    `)
+    expect(classifyMove(lone, { kind: 'moveRun', from: 0, to: 1, count: 1 })).toBe(
+      'shuffle',
+    )
+  })
+
+  it('admits build-breaks only when they are the sole survivors', () => {
+    // Only legal move is peeling S9 off S10 onto H10 — a build break.
+    const onlyBreak = parseBoard(`
+      difficulty: 4
+      c0: [0] S10 S9
+      c1: [0] H10
+      c2: [0] SK
+      c3: [0] HK
+      c4: [0] DK
+      c5: [0] DK
+      c6: [0] CK
+      c7: [0] CK
+      c8: [0] SK
+      c9: [0] HK
+      stock: 0
+      found: 0
+    `)
+    const hints = hintableMoves(onlyBreak)
+    expect(hints).toEqual([{ kind: 'moveRun', from: 0, to: 1, count: 1 }])
+    expect(classifyMove(onlyBreak, hints[0]!)).toBe('breakBuild')
   })
 })
 

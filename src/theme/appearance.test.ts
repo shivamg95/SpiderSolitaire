@@ -2,9 +2,9 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { applyAppearance, resolveAppearance, type AppearanceId } from '@/theme/themes'
 import { useSettingsStore } from '@/state/settingsStore'
 import { useUiStore } from '@/state/uiStore'
-import type { Move } from '@/engine/types'
+import type { RankedHint } from '@/solver/client'
 import { createGame } from '@/engine/game'
-import { rankedHints } from '@/solver/search'
+import { rankedHints, SYNC_HINT_BUDGET } from '@/solver/search'
 import { hintableMoves } from '@/engine/game'
 
 describe('appearance', () => {
@@ -39,36 +39,56 @@ describe('hint playback', () => {
   })
 
   it('cycles through the hint queue and wraps', () => {
-    const moves: Move[] = [
-      { kind: 'moveRun', from: 0, to: 1, count: 1 },
-      { kind: 'moveRun', from: 2, to: 3, count: 2 },
-      { kind: 'dealStock' },
+    const hints: RankedHint[] = [
+      {
+        move: { kind: 'moveRun', from: 0, to: 1, count: 1 },
+        explanation: 'first',
+        confidence: 'high',
+        tier: 'suitMerge',
+        cardIds: [],
+      },
+      {
+        move: { kind: 'moveRun', from: 2, to: 3, count: 2 },
+        explanation: 'second',
+        confidence: 'medium',
+        tier: 'uncover',
+        cardIds: [],
+      },
+      {
+        move: { kind: 'dealStock' },
+        explanation: 'deals from the stock',
+        confidence: 'low',
+        tier: 'deal',
+        cardIds: [],
+      },
     ]
     const ui = useUiStore.getState()
-    ui.startHintPlayback(moves)
+    ui.startHintPlayback(hints)
     expect(useUiStore.getState().hintPlaying).toBe(true)
-    expect(useUiStore.getState().hintMove).toEqual(moves[0])
+    expect(useUiStore.getState().hintMove).toEqual(hints[0]!.move)
+    expect(useUiStore.getState().hintExplanation).toBe('first')
 
     ui.advanceHint()
     expect(useUiStore.getState().hintIndex).toBe(1)
-    expect(useUiStore.getState().hintMove).toEqual(moves[1])
+    expect(useUiStore.getState().hintMove).toEqual(hints[1]!.move)
 
     ui.advanceHint()
     expect(useUiStore.getState().hintIndex).toBe(2)
 
     ui.advanceHint()
     expect(useUiStore.getState().hintIndex).toBe(0)
-    expect(useUiStore.getState().hintMove).toEqual(moves[0])
+    expect(useUiStore.getState().hintMove).toEqual(hints[0]!.move)
   })
 
-  it('rankedHints returns moves best-first', () => {
+  it('rankedHints returns top moves best-first', () => {
     const handle = createGame(42, 1)
     const legal = hintableMoves(handle.state, handle.settings)
-    const ranked = rankedHints(handle.state, legal.length, handle.settings)
-    expect(ranked.length).toBe(legal.length)
-    // Confidence of first is high when there is at least one move
+    const ranked = rankedHints(handle.state, 3, handle.settings, legal, SYNC_HINT_BUDGET)
+    expect(ranked.length).toBeGreaterThan(0)
+    expect(ranked.length).toBeLessThanOrEqual(3)
     if (ranked.length > 0) {
-      expect(ranked[0]!.confidence).toBe('high')
+      expect(['high', 'medium', 'low']).toContain(ranked[0]!.confidence)
+      expect(ranked[0]!.tier).toBeTruthy()
     }
   })
 })

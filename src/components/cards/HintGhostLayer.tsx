@@ -10,6 +10,7 @@ import {
   type CardPlacement,
 } from '@/layout/computeLayout'
 import { FACE_UP_OVERLAP } from '@/layout/constants'
+import type { RankedHint } from '@/solver/client'
 import { CourtArt, isCourtRank } from './CourtArt'
 import { SuitGlyph, isRedSuit } from './suits'
 import './Card.css'
@@ -22,6 +23,9 @@ export interface HintGhostLayerProps {
   readonly state: GameState
   readonly move: Move | null
   readonly hintIndex: number
+  readonly hintCount: number
+  readonly explanation: string | null
+  readonly confidence: RankedHint['confidence'] | null
   readonly playing: boolean
   readonly placements: Map<string, CardPlacement>
   readonly metrics: BoardMetrics
@@ -48,10 +52,38 @@ function GhostFace({ card }: { card: CardModel }) {
   )
 }
 
+function HintCaption({
+  hintIndex,
+  hintCount,
+  explanation,
+  confidence,
+}: {
+  hintIndex: number
+  hintCount: number
+  explanation: string | null
+  confidence: RankedHint['confidence'] | null
+}) {
+  if (!explanation || hintCount < 1) return null
+  const label = `${hintIndex + 1} of ${hintCount} — ${explanation}`
+  return (
+    <div
+      className={clsx(
+        'hint-ghost-caption',
+        confidence && `hint-ghost-caption--${confidence}`,
+      )}
+    >
+      {label}
+    </div>
+  )
+}
+
 export function HintGhostLayer({
   state,
   move,
   hintIndex,
+  hintCount,
+  explanation,
+  confidence,
   playing,
   placements,
   metrics,
@@ -117,10 +149,20 @@ export function HintGhostLayer({
 
   if (!playing || !move) return null
 
+  const caption = (
+    <HintCaption
+      hintIndex={hintIndex}
+      hintCount={hintCount}
+      explanation={explanation}
+      confidence={confidence}
+    />
+  )
+
   if (move.kind === 'dealStock') {
     return (
       <div className="hint-ghost-layer" aria-hidden>
         <div className="hint-ghost-deal-label">Deal</div>
+        {caption}
       </div>
     )
   }
@@ -162,6 +204,7 @@ export function HintGhostLayer({
           </div>
         </motion.div>
       ))}
+      {caption}
     </div>
   )
 }

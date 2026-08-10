@@ -1,5 +1,8 @@
 import type { Difficulty, GameSettings, GameState, Move } from '@/engine/types'
 import type { SearchBudget, SearchStatus } from './search'
+import type { RankedHint } from './search'
+
+export type { RankedHint }
 
 interface Pending {
   resolve: (value: unknown) => void
@@ -17,12 +20,6 @@ interface SolverResponseErr {
 }
 
 type SolverResponse = SolverResponseOk | SolverResponseErr
-
-export interface RankedHint {
-  readonly move: Move
-  readonly explanation: string
-  readonly confidence: 'high' | 'medium' | 'low'
-}
 
 export class SolverClient {
   private worker: Worker | null = null

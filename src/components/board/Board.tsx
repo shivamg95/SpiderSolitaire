@@ -104,6 +104,9 @@ export function Board() {
   const hintMove = useUiStore((s) => s.hintMove)
   const hintIndex = useUiStore((s) => s.hintIndex)
   const hintPlaying = useUiStore((s) => s.hintPlaying)
+  const hintQueue = useUiStore((s) => s.hintQueue)
+  const hintExplanation = useUiStore((s) => s.hintExplanation)
+  const hintConfidence = useUiStore((s) => s.hintConfidence)
   const advanceHint = useUiStore((s) => s.advanceHint)
   const openPanel = useUiStore((s) => s.openPanel)
   const reducedMotion = useSettingsStore((s) => s.reducedMotion)
@@ -280,6 +283,15 @@ export function Board() {
     return ids
   }, [selectedRun])
 
+  const hintCardIds = useMemo(() => {
+    const ids = new Set<string>()
+    if (!hintPlaying) return ids
+    const current = hintQueue[hintIndex]
+    if (!current) return ids
+    for (const id of current.cardIds) ids.add(id)
+    return ids
+  }, [hintPlaying, hintQueue, hintIndex])
+
   const foundationsFilled = handle.state.foundations.length
   const pulseDeal = hintPlaying && hintMove?.kind === 'dealStock'
 
@@ -336,6 +348,7 @@ export function Board() {
           arcTransition={preset.arc}
           flipTransition={preset.flip}
           reducedMotion={reducedMotion || preset.reduced}
+          hintCardIds={hintCardIds}
           selectedCardIds={selectedCardIds}
           draggingIds={draggingIds}
           flightOrder={flightOrder}
@@ -346,6 +359,9 @@ export function Board() {
           state={handle.state}
           move={hintMove}
           hintIndex={hintIndex}
+          hintCount={hintQueue.length}
+          explanation={hintExplanation}
+          confidence={hintConfidence}
           playing={hintPlaying}
           placements={placements}
           metrics={metrics}

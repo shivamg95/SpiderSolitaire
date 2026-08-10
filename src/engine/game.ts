@@ -169,6 +169,55 @@ export function movedCardIds(prev: GameState, next: GameState): CardId[] {
 }
 
 /**
+ * Priority ladder for hints. Lower index = stronger. In 1-suit, uncover ranks
+ * above suitMerge; in 2/4-suit consolidation outranks blind digging.
+ */
+export type HintTier =
+  | 'completeSet'
+  | 'emptyColumn'
+  | 'suitMerge'
+  | 'uncover'
+  | 'suitPlacement'
+  | 'crossSuitUnload'
+  | 'spendEmpty'
+  | 'deal'
+  | 'breakBuild'
+  | 'shuffle'
+
+const MULTI_SUIT_TIER_ORDER: readonly HintTier[] = [
+  'completeSet',
+  'emptyColumn',
+  'suitMerge',
+  'uncover',
+  'suitPlacement',
+  'crossSuitUnload',
+  'spendEmpty',
+  'deal',
+  'breakBuild',
+  'shuffle',
+]
+
+const ONE_SUIT_TIER_ORDER: readonly HintTier[] = [
+  'completeSet',
+  'emptyColumn',
+  'uncover',
+  'suitMerge',
+  'suitPlacement',
+  'crossSuitUnload',
+  'spendEmpty',
+  'deal',
+  'breakBuild',
+  'shuffle',
+]
+
+/** Numeric rank for a tier (0 = best). Used as a lookahead tiebreaker. */
+export function hintTierRank(tier: HintTier, difficulty: Difficulty): number {
+  const order = difficulty === 1 ? ONE_SUIT_TIER_ORDER : MULTI_SUIT_TIER_ORDER
+  const idx = order.indexOf(tier)
+  return idx < 0 ? order.length : idx
+}
+
+/**
  * True when the run being moved is already correctly placed — its head sits on
  * a face-up, same-suit card one rank higher, so lifting it dismantles a build.
  */
@@ -192,42 +241,107 @@ export function collectsSet(
   return result.ok && result.effects.some((e) => e.kind === 'foundation')
 }
 
-/** True when a move achieves something structural rather than shuffling cards. */
-export function isProductiveMove(state: GameState, move: Move): boolean {
-  if (move.kind === 'dealStock') return true
+/**
+ * Classify a legal move into the hint priority ladder.
+ *
+ * Spend-empty is only admitted for a King, the full movable run, or a move that
+ * flips a face-down; dumping a partial loose card into a free column is a shuffle.
+ */
+export function classifyMove(
+  state: GameState,
+  move: Move,
+  settings: GameSettings = DEFAULT_GAME_SETTINGS,
+): HintTier {
+  if (move.kind === 'dealStock') return 'deal'
+
   const source = state.columns[move.from]
   const dest = state.columns[move.to]
-  if (!source || !dest) return false
+  if (!source || !dest) return 'shuffle'
+
+  if (collectsSet(state, move, settings)) return 'completeSet'
 
   const emptiesSource = source.length === move.count
   const intoEmpty = dest.length === 0
-  // Relocating a whole column into an empty one trades one gap for another.
-  if (emptiesSource && intoEmpty) return false
-  if (emptiesSource || intoEmpty) return true
-  if (exposesFaceDown(state, move)) return true
-
+  const flips = exposesFaceDown(state, move)
   const head = source[source.length - move.count]
-  const top = dest[dest.length - 1]
-  if (head && head.suit === top?.suit) return true
+  const maxRun = movableRunLength(source)
 
-  return collectsSet(state, move)
+  if (breaksExistingBuild(state, move)) return 'breakBuild'
+
+  // Relocating a whole column into an empty one trades one gap for another.
+  if (emptiesSource && intoEmpty) return 'shuffle'
+
+  if (emptiesSource) return 'emptyColumn'
+
+  if (intoEmpty) {
+    const isKing = head?.rank === 13
+    const isFullRun = move.count === maxRun
+    if (isKing || isFullRun || flips) return 'spendEmpty'
+    return 'shuffle'
+  }
+
+  if (flips) return 'uncover'
+
+  const top = dest[dest.length - 1]
+  if (head && top?.suit === head.suit) {
+    // Any same-suit landing joins builds; a lone dest card still counts.
+    return movableRunLength(dest) >= 1 ? 'suitMerge' : 'suitPlacement'
+  }
+
+  if (head && top) return 'crossSuitUnload'
+
+  return 'shuffle'
+}
+
+/** True when a move achieves something structural rather than shuffling cards. */
+export function isProductiveMove(state: GameState, move: Move): boolean {
+  const tier = classifyMove(state, move)
+  return tier !== 'shuffle' && tier !== 'breakBuild'
 }
 
 /**
- * Moves worth offering as hints: legal moves that neither dismantle an existing
- * same-suit build nor shuffle cards to no effect. Falls back a tier at a time so
- * the hint button always has something to show while moves remain.
+ * Damage score for a cross-suit unload (lower is better). Prefers covering a
+ * loose card over a build head, and a shallow column over a deep one.
+ */
+export function crossSuitUnloadDamage(state: GameState, move: Move): number {
+  if (move.kind !== 'moveRun') return Number.POSITIVE_INFINITY
+  const dest = state.columns[move.to] ?? []
+  if (dest.length === 0) return Number.POSITIVE_INFINITY
+  return movableRunLength(dest) * 10 + dest.length
+}
+
+/**
+ * Moves worth offering as hints, pruned by the priority ladder.
+ * Shuffles are always dropped. Build-breaks are kept only when nothing else
+ * survives, so legitimate set-completing splits remain available as a fallback.
  */
 export function hintableMoves(
   state: GameState,
   settings: GameSettings = DEFAULT_GAME_SETTINGS,
 ): Move[] {
   const all = legalMoves(state, settings)
-  const intact = all.filter((move) => !breaksExistingBuild(state, move))
-  const productive = intact.filter((move) => isProductiveMove(state, move))
-  if (productive.length > 0) return productive
-  if (intact.length > 0) return intact
-  return all
+  const classified = all.map((move) => ({
+    move,
+    tier: classifyMove(state, move, settings),
+  }))
+
+  // Prefer non-shuffles; only fall back to raw legal moves when every option is
+  // a no-op so the hint button still has something to show.
+  const withoutShuffle = classified.filter((c) => c.tier !== 'shuffle')
+  const pool = withoutShuffle.length > 0 ? withoutShuffle : classified
+
+  const withoutBreak = pool.filter((c) => c.tier !== 'breakBuild')
+  const admitted = withoutBreak.length > 0 ? withoutBreak : pool
+
+  // Prefer less-damaging cross-suit unloads when sorting candidates for search.
+  return admitted
+    .map((c) => ({
+      ...c,
+      damage: c.tier === 'crossSuitUnload' ? crossSuitUnloadDamage(state, c.move) : 0,
+      rank: hintTierRank(c.tier, state.difficulty),
+    }))
+    .sort((a, b) => a.rank - b.rank || a.damage - b.damage)
+    .map((c) => c.move)
 }
 
 export function autoCompletableRuns(state: GameState): Move[] {

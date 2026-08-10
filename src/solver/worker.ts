@@ -74,7 +74,7 @@ function handle(req: SolverRequest): SolverResponse {
       const candidates = hintableMoves(req.params.state, settings)
       const hints = rankedHints(
         req.params.state,
-        req.params.limit ?? Math.max(1, candidates.length),
+        req.params.limit ?? 3,
         settings,
         candidates,
       )
