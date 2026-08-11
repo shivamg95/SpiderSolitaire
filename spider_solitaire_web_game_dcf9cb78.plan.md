@@ -49,7 +49,9 @@ isProject: false
 
 ## Explicitly OUT of scope (do not build)
 
-Full keyboard card navigation, screen-reader move announcements, i18n/RTL, interactive tutorial, backend/cloud sync/leaderboards, Storybook, GitHub Actions CI, build-time precomputed winnable-seed pool. A small set of laptop convenience shortcuts (undo/redo/hint/deal/new/mute/escape) IS in scope — that is not keyboard play.
+Full keyboard card navigation, screen-reader move announcements, i18n/RTL, interactive tutorial, backend/cloud sync/leaderboards, Storybook, GitHub Actions CI. A small set of laptop convenience shortcuts (undo/redo/hint/deal/new/mute/escape) IS in scope — that is not keyboard play.
+
+**Superseded:** a precomputed winnable-seed pool was listed here as out of scope, on the assumption that deals could be verified on demand. They cannot — a fresh 4-suit deal takes seconds to minutes to prove winnable, which is not a loading shimmer. Deals now come from an offline-generated pool (`npm run seeds:generate`) topped up by a background miner, and the mid-game safety net in `src/solver/rescue.ts` covers the half of "never stuck" that a winnable deal does not.
 
 ## Architecture
 

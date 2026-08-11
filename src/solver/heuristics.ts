@@ -57,6 +57,71 @@ export const HEURISTIC_WEIGHTS_BY_DIFFICULTY: Record<Difficulty, HeuristicWeight
 /** @deprecated Prefer HEURISTIC_WEIGHTS_BY_DIFFICULTY; kept for callers that expect a flat table. */
 export const HEURISTIC_WEIGHTS = HEURISTIC_WEIGHTS_BY_DIFFICULTY[1]
 
+/** Weights for the full-game search. See SEARCH_WEIGHTS_BY_DIFFICULTY. */
+export interface SearchWeights {
+  readonly foundations: number
+  readonly faceDown: number
+  readonly buried: number
+  /** Linear: adjacent face-up pairs that descend by one in the same suit. */
+  readonly suitPairs: number
+  /** Superlinear: sum(g*(g-1)/2) over maximal same-suit descending groups. */
+  readonly suitGroupsQuad: number
+  readonly junctions: number
+  readonly hardBreaks: number
+  readonly emptyColumns: number
+  readonly tailRun: number
+}
+
+/**
+ * Separate weights for the full-game search, tuned on 4-suit solve rate rather
+ * than on which single move looks best.
+ *
+ * Two things the tuning runs showed, both counter-intuitive enough to be worth
+ * recording. First, `foundations` has to dwarf everything else: at the hint
+ * weighting a finished K→A run in a column is worth 78 * 4 = 312 points and the
+ * foundation it becomes pays only 100, so the board score *drops* on the one
+ * move that wins the game. Second, the superlinear group term still has to be
+ * there and has to be large. Scoring sequences linearly instead cut the 4-suit
+ * solve rate roughly in half: consolidating cards into long same-suit runs is
+ * the whole skill of the game, and a linear reward does not distinguish one run
+ * of eight from eight loose pairs.
+ */
+export const SEARCH_WEIGHTS_BY_DIFFICULTY: Record<Difficulty, SearchWeights> = {
+  1: {
+    foundations: 1000,
+    faceDown: 3,
+    buried: 2,
+    suitPairs: 0,
+    suitGroupsQuad: 2,
+    junctions: 0,
+    hardBreaks: 4,
+    emptyColumns: 20,
+    tailRun: 0.5,
+  },
+  2: {
+    foundations: 1000,
+    faceDown: 3,
+    buried: 2,
+    suitPairs: 0,
+    suitGroupsQuad: 5,
+    junctions: 5,
+    hardBreaks: 4,
+    emptyColumns: 20,
+    tailRun: 0.5,
+  },
+  4: {
+    foundations: 1000,
+    faceDown: 3,
+    buried: 2,
+    suitPairs: 0,
+    suitGroupsQuad: 8,
+    junctions: 8,
+    hardBreaks: 4,
+    emptyColumns: 20,
+    tailRun: 0.5,
+  },
+}
+
 /** Face-up suffix of a column (everything from the first face-up card to the tail). */
 function faceUpSuffix(column: readonly Card[]): readonly Card[] {
   let start = column.length

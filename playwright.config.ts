@@ -11,7 +11,8 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   webServer: {
-    command: 'npm run build && npm run preview -- --host 127.0.0.1 --port 4173',
+    // The e2e build only differs by exposing window.__spider (src/features/testing/bridge.ts).
+    command: 'npm run build:e2e && npm run preview -- --host 127.0.0.1 --port 4173',
     port: 4173,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

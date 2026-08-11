@@ -23,6 +23,55 @@ export interface ReplayEntry {
 
 const REPLAY_CAP = 20
 
+/** Locally mined seeds kept per difficulty before the miner stands down. */
+export const MINED_SEED_CAP = 200
+
+export interface MinedSeed {
+  readonly seed: number
+  readonly nodes: number
+}
+
+/**
+ * Everything the seed source persists: seeds this device proved winnable
+ * itself, and which seeds have already been dealt so a player works through the
+ * pool instead of replaying the same few deals.
+ */
+export interface VerifiedSeedStore {
+  readonly version: 1
+  readonly mined: Record<1 | 2 | 4, readonly MinedSeed[]>
+  readonly used: Record<1 | 2 | 4, readonly number[]>
+}
+
+export function emptyVerifiedSeedStore(): VerifiedSeedStore {
+  return {
+    version: 1,
+    mined: { 1: [], 2: [], 4: [] },
+    used: { 1: [], 2: [], 4: [] },
+  }
+}
+
+function isVerifiedSeedStore(value: unknown): value is VerifiedSeedStore {
+  if (typeof value !== 'object' || value === null) return false
+  const store = value as Partial<VerifiedSeedStore>
+  if (store.version !== 1) return false
+  return typeof store.mined === 'object' && typeof store.used === 'object'
+}
+
+export async function loadVerifiedSeeds(): Promise<VerifiedSeedStore> {
+  try {
+    const raw = await loadKey<unknown>('verifiedSeeds')
+    if (isVerifiedSeedStore(raw)) return raw
+  } catch {
+    // A corrupt or unavailable store must never block a new game; the bundled
+    // pool alone is enough to keep the winnable guarantee.
+  }
+  return emptyVerifiedSeedStore()
+}
+
+export async function saveVerifiedSeeds(store: VerifiedSeedStore): Promise<void> {
+  await saveKey('verifiedSeeds', store)
+}
+
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 let pendingGame: SaveV1 | null = null
 

@@ -25,4 +25,10 @@ found: 3
 
 ## Deterministic e2e
 
-Use `?seed=&d=&moves=` plus the test-only `window.__spider` bridge when `import.meta.env.MODE === 'test'`.
+`npm run e2e` builds with `--mode test` (`npm run build:e2e`), which is the only build that installs the `window.__spider` bridge from `src/features/testing/bridge.ts`. Production bundles do not contain it — the mode check is a build-time constant, so the dynamic import is eliminated.
+
+The bridge deals a seed, replays an encoded move log (`?moves=` or `play()`), prints the ASCII board for assertions, and states a winnability verdict directly. Playwright cannot conjure a position the solver has proven dead, and waiting on a real multi-second search would be slow and flaky, so verdicts are stated and the browser is used for what it is for: that the warning, the rescue panel and the rewind behave on a real board. Call `stopWatcher()` first, or the background check will overwrite the stated verdict.
+
+## Seed pool
+
+`src/solver/seedPool.test.ts` re-solves a sample of shipped seeds and replays each solution to `isWon`; `npm run seeds:verify` does the whole pool across processes. This is the test that backs the winnable promise — if it fails, the pool ships a deal the app claims is winnable and is not.

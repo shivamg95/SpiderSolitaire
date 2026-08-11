@@ -26,6 +26,9 @@ playwright-report
 test-results
 blob-report
 
+# Resumable progress cache for npm run seeds:generate
+scripts/.seed-cache.json
+
 # Env
 .env
 .env.*

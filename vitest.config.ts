@@ -23,6 +23,8 @@ export default defineConfig({
         'src/**/*.d.ts',
         'src/**/*.{test,spec}.{ts,tsx}',
         'src/test/**',
+        // Test-only bridge, shipped in no build but the e2e one.
+        'src/features/testing/**',
         'src/vite-env.d.ts',
         'src/engine/index.ts',
         'src/solver/index.ts',
@@ -73,6 +75,9 @@ export default defineConfig({
           name: 'solver',
           environment: 'node',
           include: ['src/solver/**/*.{test,spec}.ts'],
+          // Full-game solves and pool re-verification run real multi-second
+          // searches, and coverage instrumentation slows them further.
+          testTimeout: 120_000,
         },
       },
       {

@@ -20,6 +20,10 @@ export interface SettingsState {
   readonly undoPenalty: boolean
   readonly reducedMotion: boolean
   readonly soundMuted: boolean
+  /** Deal only from the pool of seeds proven winnable. */
+  readonly winnableOnly: boolean
+  /** Watch in the background for a move that makes the deal unwinnable. */
+  readonly safetyNet: boolean
   setDifficulty: (d: Difficulty) => void
   setTheme: (t: ThemeId) => void
   setAppearance: (a: AppearanceId) => void
@@ -27,6 +31,8 @@ export interface SettingsState {
   setUndoPenalty: (v: boolean) => void
   setReducedMotion: (v: boolean) => void
   setSoundMuted: (v: boolean) => void
+  setWinnableOnly: (v: boolean) => void
+  setSafetyNet: (v: boolean) => void
   toggleMute: () => void
   toGameSettings: () => GameSettings
 }
@@ -52,6 +58,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   undoPenalty: true,
   reducedMotion: false,
   soundMuted: false,
+  winnableOnly: true,
+  safetyNet: true,
   setDifficulty: (difficulty) => {
     set({ difficulty })
   },
@@ -74,6 +82,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   setSoundMuted: (soundMuted) => {
     set({ soundMuted })
+  },
+  setWinnableOnly: (winnableOnly) => {
+    set({ winnableOnly })
+  },
+  setSafetyNet: (safetyNet) => {
+    set({ safetyNet })
   },
   toggleMute: () => {
     set({ soundMuted: !get().soundMuted })

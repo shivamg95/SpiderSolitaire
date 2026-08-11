@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import clsx from 'clsx'
 import { Stock } from '@/components/board/Stock'
+import { DealBadge } from '@/components/chrome/DealBadge'
 import { FOUNDATION_SLOTS } from '@/layout/constants'
 import type { BoardMetrics } from '@/layout/computeLayout'
 import { useGameStore } from '@/state/gameStore'
@@ -143,6 +144,7 @@ export function SideRail({
             <em>M</em> {handle.state.moveCount}
           </span>
           <span title="Time">{formatTime(elapsed)}</span>
+          <DealBadge seed={handle.seed} difficulty={handle.difficulty} />
         </div>
         <div className="side-rail__actions">
           <button

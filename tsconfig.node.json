@@ -18,12 +18,18 @@
     "noFallthroughCasesInSwitch": true,
     "erasableSyntaxOnly": true,
     "noUnusedLocals": true,
-    "noUnusedParameters": true
+    "noUnusedParameters": true,
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
   },
   "include": [
     "vite.config.ts",
     "vitest.config.ts",
     "eslint.config.js",
-    "playwright.config.ts"
+    "playwright.config.ts",
+    "scripts/**/*.ts"
   ]
 }
