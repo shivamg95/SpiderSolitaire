@@ -1,10 +1,11 @@
-import { createGame, fold, hintableMoves } from '@/engine/game'
-import { applyMove } from '@/engine/moves'
-import { isWon } from '@/engine/rules'
+import { fold, hintableMoves } from '@/engine/game'
 import type { Difficulty, GameSettings, GameState, Move } from '@/engine/types'
 import { DEFAULT_GAME_SETTINGS } from '@/engine/types'
-import { rankedHints, search } from './search'
-import type { SearchBudget, SearchStatus } from './search'
+import { rankedHints } from './search'
+import { mineSeeds, type MinedSeedResult } from './mine'
+import { findLastWinnableIndex, winnability, type WinnabilityReport } from './rescue'
+import type { SolveBudget, SolveResult } from './solve'
+import { SOLVE_PROFILES, solveDeal } from './solve'
 
 export type SolverRequest =
   | {
@@ -14,7 +15,8 @@ export type SolverRequest =
         readonly seed: number
         readonly difficulty: Difficulty
         readonly moveLog: readonly Move[]
-        readonly budget: SearchBudget
+        readonly budget: Partial<SolveBudget>
+        readonly settings?: GameSettings | undefined
       }
     }
   | {
@@ -22,108 +24,130 @@ export type SolverRequest =
       readonly method: 'hint'
       readonly params: {
         readonly state: GameState
-        readonly limit?: number
-        readonly settings?: GameSettings
+        readonly limit?: number | undefined
+        readonly settings?: GameSettings | undefined
       }
     }
   | {
       readonly id: string
-      readonly method: 'findWinnable'
+      readonly method: 'mine'
       readonly params: {
         readonly difficulty: Difficulty
         readonly budgetMs: number
-        readonly startSeed?: number
+        readonly limit: number
+        readonly startSeed?: number | undefined
       }
     }
   | {
       readonly id: string
-      readonly method: 'cancel'
-      readonly params: { readonly id: string }
+      readonly method: 'winnability'
+      readonly params: {
+        readonly seed: number
+        readonly difficulty: Difficulty
+        readonly moveLog: readonly Move[]
+        readonly settings?: GameSettings | undefined
+      }
     }
+  | {
+      readonly id: string
+      readonly method: 'lastWinnable'
+      readonly params: {
+        readonly seed: number
+        readonly difficulty: Difficulty
+        readonly moveLog: readonly Move[]
+        readonly settings?: GameSettings | undefined
+      }
+    }
+
+export type SolverResult =
+  | SolveResult
+  | WinnabilityReport
+  | MinedSeedResult
+  | { readonly index: number; readonly checked: number }
+  | ReturnType<typeof rankedHints>
 
 export type SolverResponse =
-  | { readonly id: string; readonly result: unknown }
+  | { readonly id: string; readonly result: SolverResult }
   | { readonly id: string; readonly error: string }
 
-const cancelled = new Set<string>()
-
+/**
+ * Long jobs are cancelled by terminating the worker from the client, not by
+ * posting a message: this handler is synchronous, so a `cancel` message would
+ * sit in the queue until the search it was meant to stop had already finished.
+ * `SolverClient` keeps short (`hint`) and long (`mine`, `winnability`) work on
+ * separate worker instances precisely so terminating one never drops the other.
+ */
 function handle(req: SolverRequest): SolverResponse {
   try {
-    if (req.method === 'cancel') {
-      cancelled.add(req.params.id)
-      return { id: req.id, result: true }
-    }
-    if (cancelled.has(req.id)) {
-      cancelled.delete(req.id)
-      return { id: req.id, result: { status: 'unknown', bestLine: [], nodes: 0 } }
-    }
-
-    if (req.method === 'solve') {
-      const state = fold(req.params.seed, req.params.difficulty, req.params.moveLog)
-      const budget: SearchBudget = {
-        ...req.params.budget,
-        shouldAbort: () => cancelled.has(req.id),
+    switch (req.method) {
+      case 'solve': {
+        const settings = req.params.settings ?? DEFAULT_GAME_SETTINGS
+        const state = fold(
+          req.params.seed,
+          req.params.difficulty,
+          req.params.moveLog,
+          settings,
+        )
+        const budget: SolveBudget = { ...SOLVE_PROFILES.RESCUE, ...req.params.budget }
+        return { id: req.id, result: solveDeal(state, budget, settings) }
       }
-      const result = search(state, budget)
-      cancelled.delete(req.id)
-      return { id: req.id, result }
-    }
 
-    if (req.method === 'hint') {
-      const settings = req.params.settings ?? DEFAULT_GAME_SETTINGS
-      const candidates = hintableMoves(req.params.state, settings)
-      const hints = rankedHints(
-        req.params.state,
-        req.params.limit ?? 3,
-        settings,
-        candidates,
-      )
-      return { id: req.id, result: hints }
-    }
-
-    // findWinnable
-    const { difficulty, budgetMs } = req.params
-    let seed = req.params.startSeed ?? Math.floor(Math.random() * 1_000_000_000)
-    const started = Date.now()
-    let attempts = 0
-    while (Date.now() - started < budgetMs) {
-      if (cancelled.has(req.id)) break
-      attempts += 1
-      const game = createGame(seed, difficulty)
-      const perSolve = Math.min(400, budgetMs - (Date.now() - started))
-      const result = search(game.state, {
-        maxNodes: 5_000,
-        maxMs: perSolve,
-        shouldAbort: () => cancelled.has(req.id),
-      })
-      if (result.status === 'solved') {
-        // Verify replay
-        let s = game.state
-        for (const m of result.moves) {
-          const r = applyMove(s, m)
-          if (!r.ok) break
-          s = r.state
-        }
-        if (isWon(s)) {
-          cancelled.delete(req.id)
-          return {
-            id: req.id,
-            result: { seed, attempts, nodes: result.nodes, moves: result.moves },
-          }
+      case 'hint': {
+        const settings = req.params.settings ?? DEFAULT_GAME_SETTINGS
+        const candidates = hintableMoves(req.params.state, settings)
+        return {
+          id: req.id,
+          result: rankedHints(
+            req.params.state,
+            req.params.limit ?? 3,
+            settings,
+            candidates,
+          ),
         }
       }
-      seed = (seed + 1) >>> 0
+
+      case 'mine':
+        return {
+          id: req.id,
+          result: mineSeeds(
+            req.params.difficulty,
+            req.params.budgetMs,
+            req.params.limit,
+            req.params.startSeed,
+          ),
+        }
+
+      case 'winnability': {
+        const settings = req.params.settings ?? DEFAULT_GAME_SETTINGS
+        return {
+          id: req.id,
+          result: winnability(
+            req.params.seed,
+            req.params.difficulty,
+            req.params.moveLog,
+            settings,
+          ),
+        }
+      }
+
+      case 'lastWinnable': {
+        const settings = req.params.settings ?? DEFAULT_GAME_SETTINGS
+        return {
+          id: req.id,
+          result: findLastWinnableIndex(
+            req.params.seed,
+            req.params.difficulty,
+            req.params.moveLog,
+            settings,
+          ),
+        }
+      }
     }
-    cancelled.delete(req.id)
-    return { id: req.id, result: { seed: null, attempts } }
   } catch (e) {
     return { id: req.id, error: e instanceof Error ? e.message : String(e) }
   }
 }
 
 self.onmessage = (ev: MessageEvent<SolverRequest>) => {
-  const response = handle(ev.data)
-  ;(self as unknown as Worker).postMessage(response)
+  ;(self as unknown as Worker).postMessage(handle(ev.data))
 }
-
-export type { SearchStatus }

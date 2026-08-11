@@ -22,6 +22,12 @@ Canonical rules for the engine. Tests cite this document.
 - A run may be placed on a card of rank `+1` of **any** suit, or onto an empty column.
 - Stock deal is allowed with empty columns on the board; turning setting `allowDealWithEmptyColumn` off (default on) restores the stricter rule that blocks it.
 
+## Winnable deals
+
+- With `winnableOnly` on (default), a new deal comes from a pool of seeds that were solved offline and whose solutions were replayed through this engine to a won state. See `src/solver/seedPool.generated.ts`, built by `npm run seeds:generate`.
+- Verification uses the strict `allowDealWithEmptyColumn: false` ruleset. Because the permissive mode only adds legal deals, a seed proven winnable under the strict rule stays winnable with the setting either way.
+- A winnable deal can still be ruined by the player's own moves. With `safetyNet` on, the solver re-checks the position after a pause in play and only speaks up when it has _proven_ the position dead — never when it merely failed to find a win.
+
 ## Foundations and win
 
 - A complete same-suit `K→A` run in a column is auto-removed to a foundation.

@@ -12,6 +12,7 @@ import {
 import { Panel } from '@/components/panels/Panel'
 import { SegmentedControl, Switch } from '@/components/panels/controls'
 import { useUiStore } from '@/state/uiStore'
+import { unusedSeedCount } from '@/state/seedSource'
 import './SettingsPanel.css'
 
 const APPEARANCE_LABELS: Record<AppearanceId, string> = {
@@ -51,13 +52,21 @@ export function SettingsPanel() {
   const setReducedMotion = useSettingsStore((s) => s.setReducedMotion)
   const soundMuted = useSettingsStore((s) => s.soundMuted)
   const setSoundMuted = useSettingsStore((s) => s.setSoundMuted)
+  const winnableOnly = useSettingsStore((s) => s.winnableOnly)
+  const setWinnableOnly = useSettingsStore((s) => s.setWinnableOnly)
+  const safetyNet = useSettingsStore((s) => s.safetyNet)
+  const setSafetyNet = useSettingsStore((s) => s.setSafetyNet)
   const newGame = useGameStore((s) => s.newGame)
   const restartDeal = useGameStore((s) => s.restartDeal)
+  const findRescue = useGameStore((s) => s.findRescue)
 
   const dealEmptyId = useId()
   const undoPenaltyId = useId()
   const reducedMotionId = useId()
   const soundId = useId()
+  const winnableId = useId()
+  const safetyNetId = useId()
+  const remaining = unusedSeedCount(difficulty)
 
   return (
     <Panel
@@ -81,6 +90,16 @@ export function SettingsPanel() {
           >
             Share deal
           </button>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={() => {
+              openPanelById('rescue')
+              findRescue()
+            }}
+          >
+            I'm stuck
+          </button>
         </>
       }
     >
@@ -100,6 +119,42 @@ export function SettingsPanel() {
             }}
           />
           <p className="settings-field__caption">Changing difficulty deals a new game.</p>
+        </div>
+        <div className="switch-list">
+          <div className="switch-row">
+            <div className="switch-row__copy">
+              <label className="switch-row__label" htmlFor={winnableId}>
+                Winnable deals only
+              </label>
+              <span className="switch-row__hint">
+                {winnableOnly
+                  ? `Deal only hands proven winnable. ${remaining} left before deals repeat.`
+                  : 'Deal a random hand, which may not be winnable.'}
+              </span>
+            </div>
+            <Switch
+              id={winnableId}
+              checked={winnableOnly}
+              onChange={setWinnableOnly}
+              ariaLabel="Winnable deals only"
+            />
+          </div>
+          <div className="switch-row">
+            <div className="switch-row__copy">
+              <label className="switch-row__label" htmlFor={safetyNetId}>
+                Safety net
+              </label>
+              <span className="switch-row__hint">
+                Warn when a move makes the deal impossible, and offer a rewind.
+              </span>
+            </div>
+            <Switch
+              id={safetyNetId}
+              checked={safetyNet}
+              onChange={setSafetyNet}
+              ariaLabel="Safety net"
+            />
+          </div>
         </div>
       </section>
 

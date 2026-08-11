@@ -2,7 +2,21 @@ import { create } from 'zustand'
 import type { CardId, ColumnIndex, Move } from '@/engine/types'
 import type { RankedHint } from '@/solver/client'
 
-export type PanelId = 'menu' | 'settings' | 'win' | 'share' | null
+export type PanelId = 'menu' | 'settings' | 'win' | 'share' | 'rescue' | null
+
+/**
+ * State of the safety net for the current position. `idle` before any check has
+ * run, `checking` while the worker is looking. Only `lost` is ever surfaced as a
+ * warning — see the Winnability docs in solver/rescue.ts for why `unknown` must
+ * stay silent.
+ */
+export type WinnabilityState = 'idle' | 'checking' | 'winnable' | 'unknown' | 'lost'
+
+export interface RescuePlan {
+  /** Move-log length to rewind to; 0 is the original deal. */
+  readonly index: number
+  readonly movesBack: number
+}
 
 export interface SelectedRun {
   readonly column: ColumnIndex
@@ -21,6 +35,15 @@ export interface UiState {
   /** Explanation for the current hint, if any. */
   readonly hintExplanation: string | null
   readonly hintConfidence: RankedHint['confidence'] | null
+  readonly winnability: WinnabilityState
+  /** True once the player has dismissed the warning for this position. */
+  readonly warningDismissed: boolean
+  readonly rescueSearching: boolean
+  readonly rescuePlan: RescuePlan | null
+  setWinnability: (state: WinnabilityState) => void
+  dismissWarning: () => void
+  setRescueSearching: (searching: boolean) => void
+  setRescuePlan: (plan: RescuePlan | null) => void
   openPanelById: (panel: PanelId) => void
   closePanel: () => void
   setHintMove: (move: Move | null) => void
@@ -56,6 +79,26 @@ export const useUiStore = create<UiState>((set, get) => ({
   hintExplanation: null,
   hintConfidence: null,
   selectedRun: null,
+  winnability: 'idle',
+  warningDismissed: false,
+  rescueSearching: false,
+  rescuePlan: null,
+  setWinnability: (winnability) => {
+    // A fresh verdict is a fresh chance to warn, so a warning dismissed for the
+    // previous position does not silence this one.
+    const previous = get().winnability
+    if (previous === winnability) return
+    set({ winnability, warningDismissed: false })
+  },
+  dismissWarning: () => {
+    set({ warningDismissed: true })
+  },
+  setRescueSearching: (rescueSearching) => {
+    set({ rescueSearching })
+  },
+  setRescuePlan: (rescuePlan) => {
+    set({ rescuePlan })
+  },
   openPanelById: (openPanel) => {
     set({ openPanel })
   },

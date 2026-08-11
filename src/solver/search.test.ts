@@ -1,3 +1,6 @@
+// `search` is the deprecated adapter over `solveDeal`, and these are the tests
+// that keep it honest, so calling it here is the point.
+/* eslint-disable @typescript-eslint/no-deprecated */
 import { describe, expect, it } from 'vitest'
 import { applyMove } from '@/engine/moves'
 import { isWon } from '@/engine/rules'
@@ -61,7 +64,12 @@ describe('search', () => {
     expect(isWon(s)).toBe(true)
   })
 
-  it('reports unsolvable/unknown on a dead board', () => {
+  /**
+   * `unsolvable` has to be a proof, not a shrug — the safety net only warns the
+   * player on this verdict. Ten bare fives have no legal move at all, so the
+   * frontier drains immediately and the answer must be definite.
+   */
+  it('proves a dead board unsolvable rather than reporting unknown', () => {
     const dead = {
       ...createGame(1, 1).state,
       columns: Array.from({ length: 10 }, (_, i) => [
@@ -71,7 +79,7 @@ describe('search', () => {
       foundations: [],
     }
     const result = search(dead, { maxNodes: 50, maxMs: 200 })
-    expect(['unsolvable', 'unknown']).toContain(result.status)
+    expect(result.status).toBe('unsolvable')
   })
 
   it('returns ranked hints', () => {

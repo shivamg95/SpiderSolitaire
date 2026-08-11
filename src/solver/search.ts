@@ -1,11 +1,11 @@
 import { rankLabel } from '@/engine/cards'
 import { classifyMove, hintableMoves, hintTierRank, type HintTier } from '@/engine/game'
 import { applyMove } from '@/engine/moves'
-import { isWon, legalMoves } from '@/engine/rules'
 import type { CardId, GameSettings, GameState, Move, Suit } from '@/engine/types'
 import { DEFAULT_GAME_SETTINGS } from '@/engine/types'
 import { canonicalKey } from './canonical'
 import { heuristic } from './heuristics'
+import { SOLVE_PROFILES, solveDeal } from './solve'
 
 export interface SearchBudget {
   readonly maxNodes: number
@@ -21,12 +21,6 @@ export type SearchStatus =
       readonly bestLine: readonly Move[]
       readonly nodes: number
     }
-
-interface Node {
-  readonly state: GameState
-  readonly path: readonly Move[]
-  readonly score: number
-}
 
 function reverses(prev: Move | undefined, next: Move): boolean {
   if (prev?.kind !== 'moveRun' || next.kind !== 'moveRun') return false
@@ -46,70 +40,35 @@ function orderMoves(state: GameState, moves: Move[], prev: Move | undefined): Mo
     .map((x) => x.m)
 }
 
+/**
+ * @deprecated Use `solveDeal` from `./solve`. This adapter keeps the older
+ * `{maxNodes, maxMs}` shape working for existing callers; it maps onto a sound
+ * (unpruned) search so an `unsolvable` answer still means what it says.
+ */
 export function search(
   root: GameState,
   budget: SearchBudget,
   settings: GameSettings = DEFAULT_GAME_SETTINGS,
 ): SearchStatus {
-  const started = Date.now()
-  let nodes = 0
-  const visited = new Map<string, number>()
-  const open: Node[] = [{ state: root, path: [], score: heuristic(root) }]
-  let bestLine: readonly Move[] = []
-  let bestScore = heuristic(root)
+  const result = solveDeal(
+    root,
+    {
+      ...SOLVE_PROFILES.PROVE_DEAD,
+      maxNodes: budget.maxNodes,
+      maxMs: budget.maxMs,
+      capacity: Math.max(1024, budget.maxNodes),
+      ...(budget.shouldAbort ? { shouldAbort: budget.shouldAbort } : {}),
+    },
+    settings,
+  )
 
-  while (open.length > 0) {
-    if (nodes >= budget.maxNodes) {
-      return { status: 'unknown', bestLine, nodes }
-    }
-    if (Date.now() - started >= budget.maxMs) {
-      return { status: 'unknown', bestLine, nodes }
-    }
-    if (budget.shouldAbort?.()) {
-      return { status: 'unknown', bestLine, nodes }
-    }
-
-    // Best-first: pick highest heuristic
-    open.sort((a, b) => b.score - a.score)
-    const node = open.shift()!
-    nodes += 1
-
-    if (isWon(node.state)) {
-      return { status: 'solved', moves: node.path, nodes }
-    }
-
-    const key = canonicalKey(node.state)
-    const prevDepth = visited.get(key)
-    if (prevDepth !== undefined && prevDepth <= node.path.length) continue
-    visited.set(key, node.path.length)
-
-    if (node.score > bestScore) {
-      bestScore = node.score
-      bestLine = node.path
-    }
-
-    const prev = node.path[node.path.length - 1]
-    const moves = orderMoves(node.state, legalMoves(node.state, settings), prev)
-    for (const move of moves) {
-      const result = applyMove(node.state, move, settings)
-      if (!result.ok) continue
-      open.push({
-        state: result.state,
-        path: [...node.path, move],
-        score: heuristic(result.state),
-      })
-    }
-
-    // Bound open list to avoid memory blowups
-    if (open.length > 2_000) {
-      open.sort((a, b) => b.score - a.score)
-      open.length = 2_000
-    }
+  if (result.status === 'solved') {
+    return { status: 'solved', moves: result.moves, nodes: result.nodes }
   }
-
-  return nodes > 0 && visited.size > 0
-    ? { status: 'unsolvable', nodes }
-    : { status: 'unknown', bestLine, nodes }
+  if (result.status === 'unsolvable') {
+    return { status: 'unsolvable', nodes: result.nodes }
+  }
+  return { status: 'unknown', bestLine: [], nodes: result.nodes }
 }
 
 export interface HintSearchBudget {

@@ -6,8 +6,13 @@ function columnSig(column: readonly Card[]): string {
 }
 
 /**
- * Canonical key: columns sorted (order-independent), suit-symmetry folded
- * for 1- and 2-suit games by remapping suits to appearance order.
+ * Transposition key for the hint search: columns sorted, so two positions that
+ * differ only in which column a pile sits in share a key.
+ *
+ * Suits are *not* folded together, even though 1- and 2-suit decks have
+ * interchangeable copies of a card. Hints are shallow, so the extra collapsing
+ * would not pay for itself here; the full-game solver keys on `compactKey` in
+ * zobrist.ts instead, which is both cheaper and finer-grained.
  */
 export function canonicalKey(state: GameState): string {
   const cols = state.columns.map(columnSig).slice().sort()

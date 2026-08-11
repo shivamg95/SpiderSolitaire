@@ -1,0 +1,32 @@
+.deal-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  color: color-mix(in srgb, var(--neon) 78%, var(--text));
+  cursor: help;
+}
+
+.deal-badge__shield {
+  width: 1.05em;
+  height: 1.05em;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 0 4px var(--neon-glow));
+}
+
+.deal-badge__pips {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.16em;
+}
+
+.deal-badge__pip {
+  width: 0.28em;
+  height: 0.28em;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--muted) 55%, transparent);
+}
+
+.deal-badge__pip--on {
+  background: var(--neon);
+  box-shadow: 0 0 4px var(--neon-glow);
+}
