@@ -2,6 +2,7 @@ import type { GameHandle } from '@/engine/types'
 import type { SolverCall } from '@/solver/client'
 import type { WinnabilityReport } from '@/solver/rescue'
 import { useGameStore } from './gameStore'
+import { pauseSeedMiner, resumeSeedMiner } from './miner'
 import { useSettingsStore } from './settingsStore'
 import { getSolverClient } from './solverClient'
 import { useUiStore } from './uiStore'
@@ -41,6 +42,7 @@ function runCheck(handle: GameHandle): void {
   const mine = ++generation
   const ui = useUiStore.getState()
   ui.setWinnability('checking')
+  pauseSeedMiner()
 
   const call = getSolverClient().winnability(
     handle.seed,
@@ -63,10 +65,21 @@ function runCheck(handle: GameHandle): void {
       // look like bad news.
       useUiStore.getState().setWinnability('unknown')
     })
+    .finally(() => {
+      resumeSeedMiner()
+    })
 }
 
 function onGameChanged(): void {
   const { handle, collecting } = useGameStore.getState()
+  // Mid-animation the board is between two positions. Do not record the key
+  // yet: the settle publish has the same log length, and would otherwise skip
+  // the check entirely.
+  if (collecting) {
+    cancelPending()
+    return
+  }
+
   const key = keyOf(handle)
   if (key === lastKey) return
   lastKey = key
@@ -77,8 +90,6 @@ function onGameChanged(): void {
     useUiStore.getState().setWinnability('idle')
     return
   }
-  // Mid-animation the board is between two positions; wait for it to settle.
-  if (collecting) return
   if (handle.state.foundations.length === 8) {
     useUiStore.getState().setWinnability('winnable')
     return

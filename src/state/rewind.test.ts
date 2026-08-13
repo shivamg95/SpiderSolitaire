@@ -96,19 +96,16 @@ describe('rewindTo', () => {
   })
 
   /**
-   * A rewind is an offer, not a verdict. The moves it takes away stay on the redo
-   * log so a player who changes their mind can walk straight back.
+   * Rescue rewind is a confirmed abandon of the discarded line. Redo must not
+   * put the player back on the moves that just lost the deal.
    */
-  it('keeps the discarded moves redoable', () => {
+  it('does not keep the discarded moves redoable', () => {
     const log = playSome(6)
     if (log.length < 3) return
 
     useGameStore.getState().rewindTo(2)
-    expect(useGameStore.getState().handle.redoLog).toEqual(log.slice(2))
-    expect(useGameStore.getState().canRedo()).toBe(true)
-
-    useGameStore.getState().redo()
-    expect(useGameStore.getState().handle.moveLog).toEqual(log.slice(0, 3))
+    expect(useGameStore.getState().handle.redoLog).toEqual([])
+    expect(useGameStore.getState().canRedo()).toBe(false)
   })
 
   it('rewinds all the way to the original deal', () => {
@@ -155,8 +152,57 @@ describe('rewindTo', () => {
     const log = playSome(4)
     if (log.length < 2) return
 
-    useUiStore.setState({ rescuePlan: { index: 1, movesBack: log.length - 1 } })
+    useUiStore.setState({
+      rescuePlan: { index: 1, movesBack: log.length - 1, continuation: [] },
+    })
     useGameStore.getState().rewindTo(1)
     expect(useUiStore.getState().rescuePlan).toBeNull()
+  })
+})
+
+describe('rescue continuation', () => {
+  const deal: Move = { kind: 'dealStock' }
+
+  it('prefers the continuation for Hint', () => {
+    useUiStore.setState({ rescueContinuation: [deal] })
+    useGameStore.getState().requestHint()
+    expect(useUiStore.getState().hintPlaying).toBe(true)
+    expect(useUiStore.getState().hintMove).toEqual(deal)
+    expect(useUiStore.getState().hintConfidence).toBe('high')
+  })
+
+  it('advances the continuation when the player follows it', () => {
+    const next: Move = { kind: 'dealStock' }
+    useUiStore.setState({ rescueContinuation: [deal, next] })
+    expect(useGameStore.getState().dealStock()).toBe(true)
+    expect(useUiStore.getState().rescueContinuation).toEqual([next])
+  })
+
+  it('clears the continuation when the player plays something else', () => {
+    const log = playSome(1)
+    if (log.length === 0) return
+    useUiStore.setState({ rescueContinuation: [deal] })
+    const moved = useGameStore.getState().handle.state.columns.some((col, from) => {
+      if (col.length === 0) return false
+      return useGameStore.getState().handle.state.columns.some(
+        (_, to) =>
+          from !== to &&
+          useGameStore.getState().attemptMove({
+            kind: 'moveRun',
+            from: from as ColumnIndex,
+            to: to as ColumnIndex,
+            count: 1,
+          }),
+      )
+    })
+    if (!moved) return
+    expect(useUiStore.getState().rescueContinuation).toEqual([])
+  })
+
+  it('clears the continuation on undo', () => {
+    useGameStore.getState().dealStock()
+    useUiStore.setState({ rescueContinuation: [deal] })
+    useGameStore.getState().undo()
+    expect(useUiStore.getState().rescueContinuation).toEqual([])
   })
 })

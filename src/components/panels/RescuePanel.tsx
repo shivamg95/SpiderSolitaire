@@ -5,10 +5,7 @@ import '@/components/chrome/RescueBanner.css'
 
 /**
  * The "I'm stuck" flow. Reports how far back the last winnable position was and
- * offers to go there, keeping the discarded moves redoable.
- *
- * There is always an answer to give: the deal came from the verified pool, so
- * move 0 is winnable by construction and the search has a floor.
+ * offers to go there — then shows the next proven winning move.
  */
 export function RescuePanel() {
   const open = useUiStore((s) => s.openPanel === 'rescue')
@@ -18,12 +15,18 @@ export function RescuePanel() {
   const cancelRescue = useGameStore((s) => s.cancelRescue)
   const rewindTo = useGameStore((s) => s.rewindTo)
   const restartDeal = useGameStore((s) => s.restartDeal)
+  const requestHint = useGameStore((s) => s.requestHint)
   const moveCount = useGameStore((s) => s.handle.moveLog.length)
 
   const close = (): void => {
     cancelRescue()
     closePanel()
   }
+
+  const hasLine = (plan?.continuation.length ?? 0) > 0
+  const stillWinnable = plan?.movesBack === 0 && hasLine
+  const needRewind = (plan?.movesBack ?? 0) > 0 && hasLine
+  const unproven = plan != null && !searching && !hasLine
 
   return (
     <Panel
@@ -32,37 +35,99 @@ export function RescuePanel() {
       onClose={close}
       footer={
         <>
-          {plan && plan.movesBack > 0 ? (
-            <button
-              type="button"
-              className="btn btn--primary"
-              onClick={() => {
-                rewindTo(plan.index)
-              }}
-            >
-              Rewind {plan.movesBack} {plan.movesBack === 1 ? 'move' : 'moves'}
+          {searching ? (
+            <button type="button" className="btn btn--ghost" onClick={close}>
+              Keep playing
             </button>
           ) : null}
-          <button
-            type="button"
-            className="btn btn--ghost"
-            onClick={() => {
-              cancelRescue()
-              restartDeal()
-            }}
-          >
-            Restart deal
-          </button>
-          <button type="button" className="btn btn--ghost" onClick={close}>
-            Keep playing
-          </button>
+
+          {stillWinnable ? (
+            <>
+              <button
+                type="button"
+                className="btn btn--primary"
+                onClick={() => {
+                  closePanel()
+                  requestHint()
+                }}
+              >
+                Show next winning move
+              </button>
+              <button type="button" className="btn btn--ghost" onClick={close}>
+                Keep playing
+              </button>
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={() => {
+                  cancelRescue()
+                  restartDeal()
+                }}
+              >
+                Restart deal
+              </button>
+            </>
+          ) : null}
+
+          {needRewind && plan ? (
+            <>
+              <button
+                type="button"
+                className="btn btn--primary"
+                onClick={() => {
+                  rewindTo(plan.index)
+                }}
+              >
+                Rewind {plan.movesBack} {plan.movesBack === 1 ? 'move' : 'moves'}
+              </button>
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={() => {
+                  cancelRescue()
+                  restartDeal()
+                }}
+              >
+                Restart deal
+              </button>
+              <button type="button" className="btn btn--ghost" onClick={close}>
+                Keep playing
+              </button>
+            </>
+          ) : null}
+
+          {unproven ? (
+            <>
+              <button
+                type="button"
+                className="btn btn--primary"
+                onClick={() => {
+                  cancelRescue()
+                  restartDeal()
+                }}
+              >
+                Restart deal
+              </button>
+              <button type="button" className="btn btn--ghost" onClick={close}>
+                Keep playing
+              </button>
+            </>
+          ) : null}
         </>
       }
     >
       <p className="rescue-panel__lead">
-        This deal is winnable — the position on the board is not. Looking back through
-        your {moveCount} {moveCount === 1 ? 'move' : 'moves'} for the last one that could
-        still be won.
+        {searching
+          ? `Looking through your ${moveCount} ${moveCount === 1 ? 'move' : 'moves'} for a position that can still be won.`
+          : stillWinnable
+            ? 'This position can still be won. The next move on the winning line is ready.'
+            : needRewind && plan
+              ? plan.index === 0
+                ? 'The last proven win is the fresh deal. Rewinding shows the next winning move from there.'
+                : `Rewinding ${plan.movesBack} ${plan.movesBack === 1 ? 'move' : 'moves'} puts you back at a position that can still be won, then shows the next move.`
+              : unproven
+                ? 'Could not prove a win from this deal. Restart, or keep playing.'
+                : `Looking through your ${moveCount} ${moveCount === 1 ? 'move' : 'moves'} for a position that can still be won.`}
       </p>
 
       {searching ? (
@@ -74,12 +139,14 @@ export function RescuePanel() {
 
       {!searching && plan ? (
         <div className="rescue-panel__result" role="status" aria-live="polite">
-          {plan.movesBack === 0 ? (
+          {stillWinnable ? (
             <>
-              <strong>Already at the last winnable position</strong>
-              <span>Nothing to rewind — the win is still in front of you.</span>
+              <strong>Already at a winnable position</strong>
+              <span>
+                Nothing to rewind — show the next winning move, or keep playing.
+              </span>
             </>
-          ) : (
+          ) : needRewind ? (
             <>
               <strong>
                 {plan.movesBack} {plan.movesBack === 1 ? 'move' : 'moves'} back
@@ -88,7 +155,14 @@ export function RescuePanel() {
                 {plan.index === 0
                   ? 'The whole game so far; rewinding returns you to the fresh deal.'
                   : `Rewinding puts you back at move ${plan.index}.`}{' '}
-                The moves you undo stay redoable.
+                The next winning move will be highlighted.
+              </span>
+            </>
+          ) : (
+            <>
+              <strong>No proven winning line</strong>
+              <span>
+                The solver could not prove a win from this deal inside its budget.
               </span>
             </>
           )}

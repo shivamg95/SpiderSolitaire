@@ -75,10 +75,24 @@ export function SettingsPanel() {
       onClose={closePanel}
       footer={
         <>
-          <button type="button" className="btn btn--primary" onClick={() => newGame()}>
+          <button
+            type="button"
+            className="btn btn--primary"
+            onClick={() => {
+              newGame()
+              closePanel()
+            }}
+          >
             New game
           </button>
-          <button type="button" className="btn btn--ghost" onClick={() => restartDeal()}>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={() => {
+              restartDeal()
+              closePanel()
+            }}
+          >
             Restart deal
           </button>
           <button
@@ -116,6 +130,7 @@ export function SettingsPanel() {
             onChange={(d) => {
               setDifficulty(d)
               newGame({ difficulty: d })
+              closePanel()
             }}
           />
           <p className="settings-field__caption">Changing difficulty deals a new game.</p>

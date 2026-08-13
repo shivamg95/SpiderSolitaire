@@ -67,45 +67,91 @@ export function winnability(
   return winnabilityOf(fold(seed, difficulty, moveLog, settings), settings)
 }
 
+export interface LastWinnableResult {
+  /** Move-log length to rewind to; 0 is the original deal. */
+  readonly index: number
+  readonly checked: number
+  /**
+   * A winning line from that prefix, replayed through the engine. Empty when
+   * even the deal could not be proven inside the rescue budget.
+   */
+  readonly continuation: readonly Move[]
+}
+
+function winningLineFrom(
+  state: GameState,
+  settings: GameSettings,
+): readonly Move[] | null {
+  if (isWon(state)) return []
+  const found = solveDeal(state, SOLVE_PROFILES.RESCUE, settings)
+  if (found.status === 'solved' && replayWins(state, found.moves, settings)) {
+    return found.moves
+  }
+  return null
+}
+
 /**
  * The largest move-log prefix length from which the deal can still be won.
+ *
+ * The current position is probed first: that is the common "I'm stuck" case,
+ * and a found line means there is nothing to rewind. Only then do we binary
+ * search earlier prefixes. Index 0 is solved for real rather than assumed
+ * winnable — shared and random deals have no such guarantee.
  *
  * Binary search over prefixes: if move `i` is winnable, everything before it is
  * assumed to be too, so we look later; if not, earlier. That monotonicity is an
  * approximation — winnability is not strictly monotonic in a move log, since a
  * player can wander into and back out of trouble — but it is a good one, and it
  * costs log(n) searches instead of n.
- *
- * Index 0 is the deal itself, which came from the verified pool, so a rescue
- * always has somewhere to land.
  */
 export function findLastWinnableIndex(
   seed: number,
   difficulty: Difficulty,
   moveLog: readonly Move[],
   settings: GameSettings = DEFAULT_GAME_SETTINGS,
-): { index: number; checked: number } {
-  let low = 0
-  let high = moveLog.length
-  let best = 0
+): LastWinnableResult {
   let checked = 0
+
+  const current = fold(seed, difficulty, moveLog, settings)
+  if (isWon(current)) {
+    return { index: moveLog.length, checked: 0, continuation: [] }
+  }
+
+  checked += 1
+  const currentLine = winningLineFrom(current, settings)
+  if (currentLine !== null) {
+    return { index: moveLog.length, checked, continuation: currentLine }
+  }
+
+  let low = 1
+  let high = moveLog.length - 1
+  let best = 0
+  let bestLine: readonly Move[] = []
 
   while (low <= high) {
     const mid = (low + high) >> 1
-    if (mid === 0) {
-      low = 1
-      continue
-    }
     checked += 1
     const state = fold(seed, difficulty, moveLog.slice(0, mid), settings)
-    const found = solveDeal(state, SOLVE_PROFILES.RESCUE, settings)
-    if (found.status === 'solved' && replayWins(state, found.moves, settings)) {
+    const line = winningLineFrom(state, settings)
+    if (line !== null) {
       best = mid
+      bestLine = line
       low = mid + 1
     } else {
       high = mid - 1
     }
   }
 
-  return { index: best, checked }
+  if (best > 0) {
+    return { index: best, checked, continuation: bestLine }
+  }
+
+  if (moveLog.length === 0) {
+    return { index: 0, checked, continuation: [] }
+  }
+
+  checked += 1
+  const deal = fold(seed, difficulty, [], settings)
+  const dealLine = winningLineFrom(deal, settings)
+  return { index: 0, checked, continuation: dealLine ?? [] }
 }

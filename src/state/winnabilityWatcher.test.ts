@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Difficulty, GameSettings, Move } from '@/engine/types'
+import { parseBoard } from '@/engine/testing/ascii'
+import type { Difficulty, GameHandle, GameSettings, Move } from '@/engine/types'
+import { DEFAULT_GAME_SETTINGS } from '@/engine/types'
 import type { SolverCall } from '@/solver/client'
 import type { WinnabilityReport } from '@/solver/rescue'
 import { useGameStore } from './gameStore'
@@ -126,5 +128,53 @@ describe('winnability watcher', () => {
     vi.advanceTimersByTime(5_000)
     expect(asks).toHaveLength(0)
     expect(useUiStore.getState().winnability).toBe('idle')
+  })
+
+  it('rechecks after a foundation collect settles', async () => {
+    const state = parseBoard(`
+    difficulty: 1
+    c0: [1] SA
+    c1: [0] SK SQ SJ S10 S9 S8 S7 S6 S5 S4 S3 S2
+    c2: [0] SK
+    c3: [0] SK
+    c4: [0] SK
+    c5: [0] SK
+    c6: [0] SK
+    c7: [0] SK
+    c8: [0] SK
+    stock: 50
+    found: 0
+  `)
+    const handle: GameHandle = {
+      seed: 1,
+      difficulty: 1,
+      moveLog: [],
+      redoLog: [],
+      state,
+      settings: DEFAULT_GAME_SETTINGS,
+    }
+    useGameStore.setState({
+      handle,
+      undoCount: 0,
+      movingIds: [],
+      moveSeq: 0,
+      collecting: false,
+    })
+
+    startWinnabilityWatcher()
+    vi.advanceTimersByTime(600)
+    expect(asks).toHaveLength(1)
+    asks[0]!.settle({ verdict: 'winnable', nodes: 1, deadEnd: false })
+    await flush()
+
+    expect(useGameStore.getState().tapMove(0, 1)).toBe(true)
+    expect(useGameStore.getState().collecting).toBe(true)
+    vi.advanceTimersByTime(600)
+    expect(asks).toHaveLength(1)
+
+    vi.advanceTimersByTime(1000)
+    expect(useGameStore.getState().collecting).toBe(false)
+    vi.advanceTimersByTime(600)
+    expect(asks).toHaveLength(2)
   })
 })

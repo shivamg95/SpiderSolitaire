@@ -14,7 +14,9 @@ interface SpiderBridge {
   moveCount: () => number
   board: () => string
   setWinnability: (state: string) => void
-  setRescuePlan: (plan: { index: number; movesBack: number } | null) => void
+  setRescuePlan: (
+    plan: { index: number; movesBack: number; continuation?: unknown[] } | null,
+  ) => void
   stopWatcher: () => void
 }
 
@@ -81,7 +83,11 @@ test('rescue rewinds to the position it offered', async ({ page }) => {
   // naming the position to rewind to, or its answer would overwrite ours.
   await expect(dialog.getByText(/searching/i)).toBeHidden({ timeout: 30_000 })
   await page.evaluate(() => {
-    window.__spider.setRescuePlan({ index: 0, movesBack: 1 })
+    window.__spider.setRescuePlan({
+      index: 0,
+      movesBack: 1,
+      continuation: [{ kind: 'dealStock' }],
+    })
   })
   await page.getByRole('button', { name: /rewind 1 move/i }).click()
 

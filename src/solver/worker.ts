@@ -3,7 +3,12 @@ import type { Difficulty, GameSettings, GameState, Move } from '@/engine/types'
 import { DEFAULT_GAME_SETTINGS } from '@/engine/types'
 import { rankedHints } from './search'
 import { mineSeeds, type MinedSeedResult } from './mine'
-import { findLastWinnableIndex, winnability, type WinnabilityReport } from './rescue'
+import {
+  findLastWinnableIndex,
+  winnability,
+  type LastWinnableResult,
+  type WinnabilityReport,
+} from './rescue'
 import type { SolveBudget, SolveResult } from './solve'
 import { SOLVE_PROFILES, solveDeal } from './solve'
 
@@ -63,7 +68,7 @@ export type SolverResult =
   | SolveResult
   | WinnabilityReport
   | MinedSeedResult
-  | { readonly index: number; readonly checked: number }
+  | LastWinnableResult
   | ReturnType<typeof rankedHints>
 
 export type SolverResponse =

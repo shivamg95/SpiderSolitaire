@@ -17,12 +17,17 @@ const SEEDS_PER_SLICE = 3
 const IDLE_GAP_MS = 20_000
 
 let running = false
+let pauseDepth = 0
 let timer: ReturnType<typeof setTimeout> | null = null
 let active: { cancel: () => void } | null = null
 const resumeFrom = new Map<Difficulty, number>()
 
+function isPaused(): boolean {
+  return pauseDepth > 0
+}
+
 function schedule(delayMs: number): void {
-  if (!running) return
+  if (!running || isPaused()) return
   if (timer !== null) clearTimeout(timer)
   timer = setTimeout(() => {
     timer = null
@@ -38,7 +43,7 @@ function requestIdle(run: () => void): void {
 }
 
 async function slice(): Promise<void> {
-  if (!running) return
+  if (!running || isPaused()) return
   if (typeof document !== 'undefined' && document.hidden) {
     schedule(IDLE_GAP_MS)
     return
@@ -60,13 +65,14 @@ async function slice(): Promise<void> {
     active = call
     const result = await call.promise
     active = null
-    if (!running) return
+    if (!running || isPaused()) return
     resumeFrom.set(difficulty, result.nextSeed)
     addMinedSeeds(difficulty, result.seeds)
   } catch {
     // A terminated or failed worker is not worth retrying hard; back off and let
     // the next idle window try again.
     active = null
+    if (!running || isPaused()) return
     schedule(IDLE_GAP_MS)
     return
   }
@@ -84,8 +90,31 @@ export function startSeedMiner(): void {
 
 export function stopSeedMiner(): void {
   running = false
+  pauseDepth = 0
   if (timer !== null) clearTimeout(timer)
   timer = null
   active?.cancel()
   active = null
+}
+
+/**
+ * Park the miner so a winnability or rescue search can own the long-job worker.
+ * Nested pauses are counted; mining resumes when the last pause is released.
+ */
+export function pauseSeedMiner(): void {
+  pauseDepth += 1
+  if (timer !== null) {
+    clearTimeout(timer)
+    timer = null
+  }
+  active?.cancel()
+  active = null
+}
+
+export function resumeSeedMiner(): void {
+  if (pauseDepth === 0) return
+  pauseDepth -= 1
+  if (pauseDepth === 0 && running) {
+    schedule(IDLE_GAP_MS)
+  }
 }

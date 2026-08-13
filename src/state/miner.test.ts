@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Difficulty } from '@/engine/types'
 import type { MinedSeedResult } from '@/solver/mine'
-import { startSeedMiner, stopSeedMiner } from './miner'
+import { startSeedMiner, stopSeedMiner, pauseSeedMiner, resumeSeedMiner } from './miner'
 import { MINED_SEED_CAP } from './persist'
 import { __resetSeedSourceForTests, unminedHeadroom } from './seedSource'
 import { useSettingsStore } from './settingsStore'
@@ -157,5 +157,21 @@ describe('seed miner', () => {
     expect(jobs[0]!.cancelled).toBe(true)
     vi.advanceTimersByTime(60_000)
     expect(jobs).toHaveLength(1)
+  })
+
+  it('pauses an in-flight slice so rescue can use the worker', async () => {
+    startSeedMiner()
+    vi.advanceTimersByTime(20_000)
+    expect(jobs).toHaveLength(1)
+
+    pauseSeedMiner()
+    await settle()
+    expect(jobs[0]!.cancelled).toBe(true)
+    vi.advanceTimersByTime(60_000)
+    expect(jobs).toHaveLength(1)
+
+    resumeSeedMiner()
+    vi.advanceTimersByTime(20_000)
+    expect(jobs).toHaveLength(2)
   })
 })
