@@ -55,7 +55,10 @@ function bridge(): SpiderTestBridge {
       useUiStore.getState().setWinnability(state)
     },
     setRescuePlan: (plan) => {
-      useUiStore.getState().setRescuePlan(plan)
+      const next =
+        plan === null ? null : { ...plan, continuation: plan.continuation ?? [] }
+      useUiStore.getState().setRescuePlan(next)
+      if (next) useUiStore.getState().setRescueContinuation(next.continuation)
     },
     stopWatcher: () => {
       stopWinnabilityWatcher()

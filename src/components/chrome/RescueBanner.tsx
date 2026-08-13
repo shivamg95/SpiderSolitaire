@@ -35,7 +35,7 @@ export function RescueBanner() {
         <span className="rescue-banner__hint">
           {fresh
             ? 'Turn on "Winnable deals only" in settings to avoid this.'
-            : 'Undo it, or rewind to the last position that could still be won.'}
+            : 'Undo it, or rescue to the last winnable position and see the next move.'}
         </span>
       </div>
       <div className="rescue-banner__actions">

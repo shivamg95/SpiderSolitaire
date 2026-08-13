@@ -1,11 +1,13 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createGame, fold } from '@/engine/game'
 import { deadBoard, wonBoard } from '@/engine/testing/boards'
-import type { Difficulty, Move } from '@/engine/types'
+import type { Difficulty, GameState, Move } from '@/engine/types'
 import { findLastWinnableIndex, winnability, winnabilityOf } from './rescue'
 import { SEED_POOL } from './seedPool.generated'
-import { SOLVE_PROFILES, solveDeal } from './solve'
-import { VERIFY_SETTINGS } from './verify'
+import { SOLVE_PROFILES, solveDeal, type SolveResult } from './solve'
+import { VERIFY_SETTINGS, replayWins } from './verify'
+import * as solveMod from './solve'
+import * as verifyMod from './verify'
 
 function pooled(difficulty: Difficulty): number | null {
   return SEED_POOL.pools[difficulty].seeds[0] ?? null
@@ -38,13 +40,74 @@ describe('winnabilityOf', () => {
 })
 
 describe('findLastWinnableIndex', () => {
-  it('returns 0 for a deal with no moves played', () => {
-    const seed = pooled(1)
-    if (seed === null) return
-    expect(findLastWinnableIndex(seed, 1, [], VERIFY_SETTINGS)).toEqual({
-      index: 0,
-      checked: 0,
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('solves a fresh deal and returns its continuation', () => {
+    const line: Move[] = [{ kind: 'dealStock' }]
+    vi.spyOn(solveMod, 'solveDeal').mockReturnValue({
+      status: 'solved',
+      moves: line,
+      nodes: 1,
     })
+    vi.spyOn(verifyMod, 'replayWins').mockReturnValue(true)
+
+    expect(findLastWinnableIndex(1, 1, [], VERIFY_SETTINGS)).toEqual({
+      index: 0,
+      checked: 1,
+      continuation: line,
+    })
+  })
+
+  it('probes the current prefix first and keeps its continuation', () => {
+    const line: Move[] = [{ kind: 'dealStock' }]
+    const solve = vi.spyOn(solveMod, 'solveDeal').mockReturnValue({
+      status: 'solved',
+      moves: line,
+      nodes: 10,
+    })
+    vi.spyOn(verifyMod, 'replayWins').mockReturnValue(true)
+
+    const log: Move[] = [{ kind: 'dealStock' }, { kind: 'dealStock' }]
+    const result = findLastWinnableIndex(1, 1, log, VERIFY_SETTINGS)
+    expect(result).toEqual({
+      index: 2,
+      checked: 1,
+      continuation: line,
+    })
+    expect(solve).toHaveBeenCalledTimes(1)
+  })
+
+  it('solves the deal when every later prefix misses', () => {
+    const line: Move[] = [{ kind: 'dealStock' }]
+    vi.spyOn(solveMod, 'solveDeal').mockImplementation(
+      (state: GameState): SolveResult => {
+        if (state.moveCount === 0) {
+          return { status: 'solved', moves: line, nodes: 1 }
+        }
+        return { status: 'unknown', nodes: 1, reason: 'time' }
+      },
+    )
+    vi.spyOn(verifyMod, 'replayWins').mockReturnValue(true)
+
+    const log: Move[] = [{ kind: 'dealStock' }, { kind: 'dealStock' }]
+    const result = findLastWinnableIndex(1, 1, log, VERIFY_SETTINGS)
+    expect(result.index).toBe(0)
+    expect(result.continuation).toEqual(line)
+    expect(result.checked).toBeGreaterThan(1)
+  })
+
+  it('returns an empty continuation when the deal cannot be proven', () => {
+    vi.spyOn(solveMod, 'solveDeal').mockReturnValue({
+      status: 'unknown',
+      nodes: 1,
+      reason: 'time',
+    })
+
+    const result = findLastWinnableIndex(99, 4, [{ kind: 'dealStock' }], VERIFY_SETTINGS)
+    expect(result.index).toBe(0)
+    expect(result.continuation).toEqual([])
   })
 
   /**
@@ -64,7 +127,15 @@ describe('findLastWinnableIndex', () => {
     const prefix = solved.moves.slice(0, 10)
     const result = findLastWinnableIndex(seed, 1, prefix, VERIFY_SETTINGS)
     expect(result.index).toBe(prefix.length)
-    expect(result.checked).toBeGreaterThan(0)
+    expect(result.checked).toBe(1)
+    expect(result.continuation.length).toBeGreaterThan(0)
+    expect(
+      replayWins(
+        fold(seed, 1, prefix, VERIFY_SETTINGS),
+        result.continuation,
+        VERIFY_SETTINGS,
+      ),
+    ).toBe(true)
   })
 
   it('accepts a complete winning line', () => {
@@ -77,6 +148,7 @@ describe('findLastWinnableIndex', () => {
 
     const result = findLastWinnableIndex(seed, 1, solved.moves, VERIFY_SETTINGS)
     expect(result.index).toBe(solved.moves.length)
+    expect(result.continuation).toEqual([])
     expect(fold(seed, 1, solved.moves, VERIFY_SETTINGS).foundations).toHaveLength(8)
   })
 
@@ -96,5 +168,6 @@ describe('findLastWinnableIndex', () => {
     const result = findLastWinnableIndex(seed, 2, moveLog, VERIFY_SETTINGS)
     expect(result.index).toBeGreaterThanOrEqual(0)
     expect(result.index).toBeLessThanOrEqual(moveLog.length)
+    expect(Array.isArray(result.continuation)).toBe(true)
   })
 })

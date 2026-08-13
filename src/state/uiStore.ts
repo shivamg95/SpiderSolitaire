@@ -16,6 +16,8 @@ export interface RescuePlan {
   /** Move-log length to rewind to; 0 is the original deal. */
   readonly index: number
   readonly movesBack: number
+  /** Winning line from that prefix; empty when even the deal could not be proven. */
+  readonly continuation: readonly Move[]
 }
 
 export interface SelectedRun {
@@ -40,10 +42,13 @@ export interface UiState {
   readonly warningDismissed: boolean
   readonly rescueSearching: boolean
   readonly rescuePlan: RescuePlan | null
+  /** Remaining proven winning moves; Hint follows these until the player deviates. */
+  readonly rescueContinuation: readonly Move[]
   setWinnability: (state: WinnabilityState) => void
   dismissWarning: () => void
   setRescueSearching: (searching: boolean) => void
   setRescuePlan: (plan: RescuePlan | null) => void
+  setRescueContinuation: (moves: readonly Move[]) => void
   openPanelById: (panel: PanelId) => void
   closePanel: () => void
   setHintMove: (move: Move | null) => void
@@ -83,6 +88,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   warningDismissed: false,
   rescueSearching: false,
   rescuePlan: null,
+  rescueContinuation: [],
   setWinnability: (winnability) => {
     // A fresh verdict is a fresh chance to warn, so a warning dismissed for the
     // previous position does not silence this one.
@@ -98,6 +104,9 @@ export const useUiStore = create<UiState>((set, get) => ({
   },
   setRescuePlan: (rescuePlan) => {
     set({ rescuePlan })
+  },
+  setRescueContinuation: (rescueContinuation) => {
+    set({ rescueContinuation })
   },
   openPanelById: (openPanel) => {
     set({ openPanel })

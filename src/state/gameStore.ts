@@ -27,8 +27,11 @@ import type {
   Move,
 } from '@/engine/types'
 import { DEFAULT_GAME_SETTINGS } from '@/engine/types'
+import { applyMove } from '@/engine/moves'
 import type { RankedHint, SolverCall } from '@/solver/client'
-import { rankedHints, SYNC_HINT_BUDGET } from '@/solver/search'
+import type { LastWinnableResult } from '@/solver/rescue'
+import { hintForMove, rankedHints, SYNC_HINT_BUDGET } from '@/solver/search'
+import { pauseSeedMiner, resumeSeedMiner } from './miner'
 import { nextVerifiedSeed } from './seedSource'
 import { useSettingsStore } from './settingsStore'
 import { getSolverClient } from './solverClient'
@@ -46,6 +49,18 @@ function invalidatePendingHints(): void {
 function syncRankedHints(handle: GameHandle): RankedHint[] {
   const candidates = hintableMoves(handle.state, handle.settings)
   return rankedHints(handle.state, 3, handle.settings, candidates, SYNC_HINT_BUDGET)
+}
+
+function movesEqual(a: Move, b: Move): boolean {
+  if (a.kind === 'dealStock' && b.kind === 'dealStock') return true
+  if (a.kind === 'moveRun' && b.kind === 'moveRun') {
+    return a.from === b.from && a.to === b.to && a.count === b.count
+  }
+  return false
+}
+
+function clearRescueContinuation(): void {
+  useUiStore.getState().setRescueContinuation([])
 }
 
 function randomSeed(): number {
@@ -119,7 +134,7 @@ export interface GameStoreState {
   restartDeal: () => void
   /** Starts async hint playback; cancels an in-flight hint when called again. */
   requestHint: () => void
-  /** Truncate the move log to `index`, keeping the discarded tail redoable. */
+  /** Truncate the move log to `index`. Discarded moves are not redoable. */
   rewindTo: (index: number) => void
   /** Find the latest still-winnable position and offer a rewind to it. */
   findRescue: () => void
@@ -134,7 +149,7 @@ export interface GameStoreState {
 
 export const useGameStore = create<GameStoreState>((set, get) => {
   let collectTimer: number | null = null
-  let rescueSearch: SolverCall<unknown> | null = null
+  let rescueSearch: SolverCall<LastWinnableResult> | null = null
   let rescueGeneration = 0
 
   function cancelCollect(): void {
@@ -192,6 +207,20 @@ export const useGameStore = create<GameStoreState>((set, get) => {
     }, collectDelayMs(travelling.length))
   }
 
+  function playContinuationHint(): boolean {
+    const ui = useUiStore.getState()
+    const { handle } = get()
+    const next = ui.rescueContinuation[0]
+    if (!next) return false
+    if (!applyMove(handle.state, next, handle.settings).ok) {
+      ui.setRescueContinuation([])
+      return false
+    }
+    set({ hintsUsed: get().hintsUsed + 1 })
+    ui.startHintPlayback([hintForMove(handle.state, next, handle.settings)])
+    return true
+  }
+
   return {
     handle: createGame(1, 1, DEFAULT_GAME_SETTINGS),
     undoCount: 0,
@@ -208,6 +237,7 @@ export const useGameStore = create<GameStoreState>((set, get) => {
       cancelCollect()
       useUiStore.getState().clearSelection()
       clearHints()
+      clearRescueContinuation()
       set({
         handle: withScore(handle, 0),
         undoCount: 0,
@@ -224,7 +254,15 @@ export const useGameStore = create<GameStoreState>((set, get) => {
       if (collecting) return false
       const next = engineAttempt(handle, move)
       if (next === handle) return false
+      const head = useUiStore.getState().rescueContinuation[0]
+      const followed = head !== undefined && movesEqual(head, move)
       commit(handle, next, move, undoCount)
+      const ui = useUiStore.getState()
+      if (followed) {
+        ui.setRescueContinuation(ui.rescueContinuation.slice(1))
+      } else {
+        ui.setRescueContinuation([])
+      }
       return true
     },
 
@@ -245,6 +283,7 @@ export const useGameStore = create<GameStoreState>((set, get) => {
       if (collecting) return
       const next = engineUndo(handle)
       if (next === handle) return
+      clearRescueContinuation()
       commit(handle, next, null, undoCount + 1)
     },
 
@@ -254,6 +293,7 @@ export const useGameStore = create<GameStoreState>((set, get) => {
       const move = handle.redoLog[0] ?? null
       const next = engineRedo(handle)
       if (next === handle) return
+      clearRescueContinuation()
       commit(handle, next, move, undoCount)
     },
 
@@ -263,6 +303,7 @@ export const useGameStore = create<GameStoreState>((set, get) => {
       cancelCollect()
       useUiStore.getState().clearSelection()
       clearHints()
+      clearRescueContinuation()
       set({
         handle: withScore({ ...next, settings: settingsFromStore() }, 0),
         undoCount: 0,
@@ -281,6 +322,8 @@ export const useGameStore = create<GameStoreState>((set, get) => {
         invalidatePendingHints()
         return
       }
+      if (playContinuationHint()) return
+
       const { handle } = get()
       const gen = ++hintGeneration
       const applyHints = (ranked: RankedHint[]) => {
@@ -312,9 +355,7 @@ export const useGameStore = create<GameStoreState>((set, get) => {
       const next: GameHandle = {
         ...handle,
         moveLog,
-        // Keep the discarded tail redoable. A rewind is an offer, not a verdict,
-        // and a player who wants to see the position again should be able to.
-        redoLog: [...discarded, ...handle.redoLog],
+        redoLog: [],
         state: fold(handle.seed, handle.difficulty, moveLog, handle.settings, handle),
       }
 
@@ -322,19 +363,18 @@ export const useGameStore = create<GameStoreState>((set, get) => {
       ui.setRescuePlan(null)
       ui.closePanel()
       commit(handle, next, null, undoCount + discarded.length)
+      playContinuationHint()
     },
 
     findRescue: () => {
       const { handle } = get()
       const ui = useUiStore.getState()
-      if (handle.moveLog.length === 0) {
-        ui.setRescuePlan({ index: 0, movesBack: 0 })
-        return
-      }
 
       rescueSearch?.cancel()
+      pauseSeedMiner()
       ui.setRescueSearching(true)
       ui.setRescuePlan(null)
+      ui.setRescueContinuation([])
       const generation = ++rescueGeneration
 
       const call = getSolverClient().lastWinnable(
@@ -346,24 +386,28 @@ export const useGameStore = create<GameStoreState>((set, get) => {
       rescueSearch = call
 
       void call.promise
-        .then(({ index }) => {
+        .then(({ index, continuation }) => {
+          if (generation !== rescueGeneration) return
+          const current = get().handle
+          const next = useUiStore.getState()
+          next.setRescuePlan({
+            index,
+            movesBack: current.moveLog.length - index,
+            continuation,
+          })
+          next.setRescueContinuation(continuation)
+        })
+        .catch(() => {
           if (generation !== rescueGeneration) return
           const current = get().handle
           useUiStore.getState().setRescuePlan({
-            index,
-            movesBack: current.moveLog.length - index,
+            index: 0,
+            movesBack: current.moveLog.length,
+            continuation: [],
           })
         })
-        .catch(() => {
-          // Falling back to the deal itself is always correct: it came from the
-          // verified pool, so it is winnable by construction.
-          if (generation !== rescueGeneration) return
-          const current = get().handle
-          useUiStore
-            .getState()
-            .setRescuePlan({ index: 0, movesBack: current.moveLog.length })
-        })
         .finally(() => {
+          resumeSeedMiner()
           if (generation !== rescueGeneration) return
           rescueSearch = null
           useUiStore.getState().setRescueSearching(false)

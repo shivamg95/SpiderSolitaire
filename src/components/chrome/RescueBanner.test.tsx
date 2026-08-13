@@ -13,7 +13,7 @@ const DIFFICULTY: Difficulty = 1
 vi.mock('@/state/solverClient', () => ({
   getSolverClient: () => ({
     lastWinnable: () => ({
-      promise: Promise.resolve({ index: 0, checked: 1 }),
+      promise: Promise.resolve({ index: 0, checked: 1, continuation: [] }),
       cancel: () => undefined,
     }),
   }),

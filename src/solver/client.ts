@@ -1,6 +1,6 @@
 import type { Difficulty, GameSettings, GameState, Move } from '@/engine/types'
 import type { MinedSeedResult } from './mine'
-import type { WinnabilityReport } from './rescue'
+import type { LastWinnableResult, WinnabilityReport } from './rescue'
 import type { RankedHint } from './search'
 import type { SolveBudget, SolveResult } from './solve'
 import type { SolverRequest, SolverResponse } from './worker'
@@ -138,8 +138,8 @@ export class SolverClient {
     difficulty: Difficulty,
     moveLog: readonly Move[],
     settings?: GameSettings,
-  ): SolverCall<{ index: number; checked: number }> {
-    return this.jobs.call<{ index: number; checked: number }>({
+  ): SolverCall<LastWinnableResult> {
+    return this.jobs.call<LastWinnableResult>({
       method: 'lastWinnable',
       params: { seed, difficulty, moveLog, settings },
     })

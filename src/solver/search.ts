@@ -258,6 +258,23 @@ export interface RankedHint {
   readonly cardIds: readonly CardId[]
 }
 
+/** Build a single high-confidence hint for a known-legal move (rescue line). */
+export function hintForMove(
+  state: GameState,
+  move: Move,
+  settings: GameSettings = DEFAULT_GAME_SETTINGS,
+  confidence: RankedHint['confidence'] = 'high',
+): RankedHint {
+  const tier = classifyMove(state, move, settings)
+  return {
+    move,
+    explanation: explainMove(state, move, settings, tier),
+    confidence,
+    tier,
+    cardIds: moveCardIds(state, move),
+  }
+}
+
 function confidenceFor(
   ranked: readonly { score: number; tier: HintTier }[],
   index: number,
