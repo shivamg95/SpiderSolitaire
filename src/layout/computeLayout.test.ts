@@ -31,6 +31,22 @@ describe('computeBoardMetrics', () => {
     expect(metrics.railY).toBeGreaterThan(metrics.columnsY)
   })
 
+  it('keeps the tableau inside safe-area insets', () => {
+    const safeTop = 44
+    const safeBottom = 34
+    const metrics = computeBoardMetrics({
+      width: 400,
+      height: 800,
+      safeTop,
+      safeBottom,
+    })
+    const flush = computeBoardMetrics({ width: 400, height: 800 })
+    expect(metrics.columnsY).toBeGreaterThan(flush.columnsY)
+    expect(metrics.railY + metrics.railHeight).toBeLessThanOrEqual(
+      metrics.boardHeight - safeBottom,
+    )
+  })
+
   it('grows cards on wide screens and keeps gaps proportional to card width', () => {
     const metrics = computeBoardMetrics({ width: 1920, height: 1080 })
     expect(metrics.cardWidth).toBeGreaterThan(96)

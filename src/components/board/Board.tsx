@@ -16,6 +16,7 @@ import {
   computeLayout,
   type ViewportSize,
 } from '@/layout/computeLayout'
+import { readViewportSize } from '@/layout/viewport'
 import { FOUNDATION_SLOTS } from '@/layout/constants'
 import { useGameStore } from '@/state/gameStore'
 import { useSettingsStore } from '@/state/settingsStore'
@@ -72,18 +73,24 @@ function useFoundationBurst(
 }
 
 function useViewport(): ViewportSize {
-  const [vp, setVp] = useState<ViewportSize>(() => ({
-    width: typeof window !== 'undefined' ? window.innerWidth : 1280,
-    height: typeof window !== 'undefined' ? window.innerHeight : 800,
-  }))
+  const [vp, setVp] = useState<ViewportSize>(() =>
+    typeof window !== 'undefined' ? readViewportSize() : { width: 1280, height: 800 },
+  )
   useEffect(() => {
     const sync = () => {
-      setVp({ width: window.innerWidth, height: window.innerHeight })
+      setVp(readViewportSize())
     }
     sync()
     window.addEventListener('resize', sync)
+    document.addEventListener('fullscreenchange', sync)
+    const visual = window.visualViewport
+    visual?.addEventListener('resize', sync)
+    visual?.addEventListener('scroll', sync)
     return () => {
       window.removeEventListener('resize', sync)
+      document.removeEventListener('fullscreenchange', sync)
+      visual?.removeEventListener('resize', sync)
+      visual?.removeEventListener('scroll', sync)
     }
   }, [])
   return vp
