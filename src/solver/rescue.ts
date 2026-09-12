@@ -2,6 +2,7 @@ import { fold } from '@/engine/game'
 import { isDeadEnd, isWon } from '@/engine/rules'
 import type { Difficulty, GameSettings, GameState, Move } from '@/engine/types'
 import { DEFAULT_GAME_SETTINGS } from '@/engine/types'
+import { compressWinningLine } from './compressLine'
 import { SOLVE_PROFILES, solveDeal } from './solve'
 import { replayWins } from './verify'
 
@@ -85,7 +86,9 @@ function winningLineFrom(
   if (isWon(state)) return []
   const found = solveDeal(state, SOLVE_PROFILES.RESCUE, settings)
   if (found.status === 'solved' && replayWins(state, found.moves, settings)) {
-    return found.moves
+    // DFS returns the first win, which is often a long parking walk. Hint plays
+    // this line move-for-move, so strip hops the suffix does not need.
+    return compressWinningLine(state, found.moves, settings)
   }
   return null
 }
